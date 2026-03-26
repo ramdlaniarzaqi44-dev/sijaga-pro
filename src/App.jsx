@@ -5,7 +5,14 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE INITIALIZATION ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+let parsedConfig;
+try {
+    parsedConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : null;
+} catch (e) {
+    parsedConfig = null;
+}
+
+const firebaseConfig = parsedConfig || {
     apiKey: "AIzaSyBddZVSGYw-D-8qvPd-My8c3mMDWo_OZSA",
     authDomain: "jurnalaltaz.firebaseapp.com",
     projectId: "jurnalaltaz",
@@ -17,7 +24,7 @@ const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__f
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const globalAppId = typeof __app_id !== 'undefined' ? __app_id : 'jurnalaltaz';
+const globalAppId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'jurnalaltaz';
 
 // --- DATA MOCKUP AWAL ---
 const INITIAL_STUDENTS = [
@@ -51,9 +58,8 @@ const calculateJamTime = (jamKeString) => {
     if (isNaN(startJam) || isNaN(endJam)) return jamKeString;
 
     const getMinsCorrected = (jam, isEnd) => {
-        let mins = 430 + (jam - 1) * 40; // 07:10 dimulai pada menit ke-430
+        let mins = 430 + (jam - 1) * 40; 
         if (isEnd) mins += 40;
-        // Jika Jam lebih dari 5, tambahkan 20 menit untuk istirahat (10.30 - 10.50)
         if (!isEnd && jam > 5) mins += 20; 
         if (isEnd && jam > 5) mins += 20;
         return mins;
@@ -63,7 +69,7 @@ const calculateJamTime = (jamKeString) => {
     return `${format(getMinsCorrected(startJam, false))} - ${format(getMinsCorrected(endJam, true))}`;
 };
 
-// --- HOOK FIREBASE AMAN (ANTI RESET) ---
+// --- HOOK FIREBASE AMAN (ANTI RESET & ROBUST ERROR HANDLING) ---
 const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
     const [data, setData] = useState(initialValue);
     const [loading, setLoading] = useState(true);
@@ -81,7 +87,6 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
             if (snap.exists()) {
                 setData(snap.data().items || initialValue);
             } else {
-                // Hanya gunakan initialValue jika ini adalah muat pertama dan dokumen benar-benar tidak ada di database
                 if (!hasLoadedInitial.current) {
                     setData(initialValue);
                 }
@@ -90,26 +95,27 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
             if (!hasLoadedInitial.current) {
                 hasLoadedInitial.current = true;
                 setLoading(false);
-                if (onLoaded) onLoaded(); // Beritahu App bahwa data ini selesai dimuat
+                if (onLoaded) onLoaded(); 
             }
         }, (err) => {
             console.error(`Firebase Sync Error on ${docId}:`, err);
-            // JANGAN mengubah data menjadi initialValue saat error koneksi, biarkan cache memori (data saat ini) yang berjalan.
+            // Tangani error jika permissions ditolak (misal saat deploy ke Vercel tanpa merubah rules Firebase)
             if (!hasLoadedInitial.current) {
-                 setLoading(false);
+                 hasLoadedInitial.current = true; 
+                 setLoading(false); // Pastikan loading spinner hilang agar aplikasi tidak hang
                  if (onLoaded) onLoaded();
             }
         });
         return () => unsubscribe();
-    }, [fbUser, docId]); // initialValue dan onLoaded tidak menjadi dependensi agar tidak me-reset efek
+    }, [fbUser, docId]);
 
     const saveData = async (newDataAction) => {
         if (!fbUser) return;
         try {
             const valueToStore = typeof newDataAction === 'function' ? newDataAction(dataRef.current) : newDataAction;
-            setData(valueToStore); // Perbarui tampilan dengan seketika
+            setData(valueToStore); // Perbarui tampilan UI secara instan
             const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
-            await setDoc(docRef, { items: valueToStore }, { merge: true }); // Simpan ke database
+            await setDoc(docRef, { items: valueToStore }, { merge: true }); 
         } catch (error) {
             console.error("Failed to save:", error);
             throw error;
@@ -1299,8 +1305,8 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
 
     // --- FUNGSI TAMBAH & EDIT DATA ---
     const handleAddClick = () => {
-        setEditingItem(null); // Set null menandakan kita sedang mode Tambah, bukan Edit
-        setFormData({}); // Kosongkan form
+        setEditingItem(null); 
+        setFormData({}); 
         setShowEditModal(true);
     };
 
@@ -1576,6 +1582,7 @@ export default function App() {
     const [confirm, setConfirm] = useState(null);
 
     useEffect(() => {
+        let isMounted = true;
         const initAuth = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -1585,30 +1592,54 @@ export default function App() {
                 }
             } catch (e) {
                 console.error("Auth error", e);
+                try {
+                    await signInAnonymously(auth);
+                } catch (err) {
+                    console.error("Fallback auth error", err);
+                }
             }
         };
         initAuth();
-        const unsubscribe = onAuthStateChanged(auth, (u) => setFbUser(u));
-        return () => unsubscribe();
+        const unsubscribe = onAuthStateChanged(auth, (u) => {
+            if (isMounted) setFbUser(u);
+        });
+        return () => {
+            isMounted = false;
+            unsubscribe();
+        };
     }, []);
 
-    // Load semua state Firebase dengan default aman
-    const [teachers, setTeachers] = useFirebaseData('teachers', INITIAL_TEACHERS, fbUser);
-    const [students, setStudents] = useFirebaseData('students', INITIAL_STUDENTS, fbUser);
-    const [classes, setClasses] = useFirebaseData('classes', INITIAL_CLASSES, fbUser);
-    const [subjects, setSubjects] = useFirebaseData('subjects', INITIAL_SUBJECTS, fbUser);
-    const [schedules, setSchedules] = useFirebaseData('schedules', INITIAL_SCHEDULE, fbUser);
-    const [jurnals, setJurnals] = useFirebaseData('jurnals', [], fbUser);
-    const [teacherAttendance, setTeacherAttendance] = useFirebaseData('teacherAttendance', [], fbUser);
-    const [classLogs, setClassLogs] = useFirebaseData('classLogs', [], fbUser);
-    const [accounts, setAccounts] = useFirebaseData('accounts', INITIAL_ACCOUNTS, fbUser);
-    const [attendance, setAttendance] = useFirebaseData('attendance', {}, fbUser); 
-    const [teacherDriveLinks, setTeacherDriveLinks] = useFirebaseData('teacherDriveLinks', INITIAL_DRIVE_LINKS, fbUser);
-    const [schoolConfig, setSchoolConfig] = useFirebaseData('schoolConfig', INITIAL_SCHOOL_CONFIG, fbUser);
-    const [schoolDocs, setSchoolDocs] = useFirebaseData('schoolDocs', INITIAL_SCHOOL_DOCS, fbUser);
+    // Load semua state Firebase dan ambil status loading (l1, l2, dst)
+    const [teachers, setTeachers, l1] = useFirebaseData('teachers', INITIAL_TEACHERS, fbUser);
+    const [students, setStudents, l2] = useFirebaseData('students', INITIAL_STUDENTS, fbUser);
+    const [classes, setClasses, l3] = useFirebaseData('classes', INITIAL_CLASSES, fbUser);
+    const [subjects, setSubjects, l4] = useFirebaseData('subjects', INITIAL_SUBJECTS, fbUser);
+    const [schedules, setSchedules, l5] = useFirebaseData('schedules', INITIAL_SCHEDULE, fbUser);
+    const [jurnals, setJurnals, l6] = useFirebaseData('jurnals', [], fbUser);
+    const [teacherAttendance, setTeacherAttendance, l7] = useFirebaseData('teacherAttendance', [], fbUser);
+    const [classLogs, setClassLogs, l8] = useFirebaseData('classLogs', [], fbUser);
+    const [accounts, setAccounts, l9] = useFirebaseData('accounts', INITIAL_ACCOUNTS, fbUser);
+    const [attendance, setAttendance, l10] = useFirebaseData('attendance', {}, fbUser); 
+    const [teacherDriveLinks, setTeacherDriveLinks, l11] = useFirebaseData('teacherDriveLinks', INITIAL_DRIVE_LINKS, fbUser);
+    const [schoolConfig, setSchoolConfig, l12] = useFirebaseData('schoolConfig', INITIAL_SCHOOL_CONFIG, fbUser);
+    const [schoolDocs, setSchoolDocs, l13] = useFirebaseData('schoolDocs', INITIAL_SCHOOL_DOCS, fbUser);
+
+    // Kunci aplikasi jika ada satu saja data yang belum selesai dimuat dari Firebase
+    const isDataLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13;
 
     const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
     const showConfirm = (message, onConfirm) => { setConfirm({ message, onConfirm: () => { onConfirm(); setConfirm(null); }, onCancel: () => setConfirm(null) }); };
+
+    // Tampilkan Loading Screen Murni jika Firebase belum siap
+    if (isDataLoading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 selection:bg-indigo-100 selection:text-indigo-700">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Menyinkronkan Data...</h2>
+                <p className="text-slate-500 text-sm font-medium animate-pulse">Sabar, masih proses menyambungkan ke database Firebase.</p>
+            </div>
+        );
+    }
 
     if (!user) return <><LoginScreen onLogin={setUser} accounts={accounts || []} showToast={showToast} schoolConfig={schoolConfig || {}} /><ToastContainer toast={toast} /></>;
 
