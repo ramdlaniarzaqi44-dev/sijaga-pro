@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
 VitePWA({ // 
       registerType: 'autoUpdate',
+  devOptions: {
+        enabled: true // <-- Tambahkan baris ini agar jalan di localhost
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'Sijaga Pro',
