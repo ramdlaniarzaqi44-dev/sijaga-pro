@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react()],
 VitePWA({ // 
       registerType: 'autoUpdate',
+  injectRegister: 'auto',
   devOptions: {
         enabled: true // <-- Tambahkan baris ini agar jalan di localhost
       },
