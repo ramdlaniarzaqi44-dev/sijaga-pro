@@ -18,12 +18,12 @@ VitePWA({ //
         theme_color: '#ffffff',
         icons: [
           {
-            src: 'SIJAGAPRO 192.png',
+            src: 'SIJAGAPRO192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'SIJAGAPRO 512.png',
+            src: 'SIJAGAPRO512.png',
             sizes: '512x512',
             type: 'image/png'
           }
