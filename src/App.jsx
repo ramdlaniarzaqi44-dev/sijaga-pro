@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link, Wifi, BrainCircuit, FileBadge, Loader2 } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -43,8 +43,21 @@ const INITIAL_ACCOUNTS = [
     { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', teacherId: 1 },
 ];
 const INITIAL_DRIVE_LINKS = { 1: { perangkat: 'https://drive.google.com/', sas_sat: '', psaj: '' } };
-const INITIAL_SCHOOL_DOCS = { sk_kbm: '', pekan_efektif: '' };
-const INITIAL_SCHOOL_CONFIG = { name: 'SMA Negeri 1 Edukasi', npsn: '12345678', level: 'SMA/MA', logo: 'https://ui-avatars.com/api/?name=SM&background=4f46e5&color=fff&size=128', academicYear: '2025/2026', semester: 'Ganjil', address: 'Jl. Pendidikan No. 1, Kec. Ilmu, Kota Pelajar', email: 'info@sman1edukasi.sch.id' };
+const INITIAL_SCHOOL_DOCS = { sk_kbm: '', kalender_rpe: '' };
+const INITIAL_SCHOOL_CONFIG = { 
+    name: 'SMA Negeri 1 Edukasi', 
+    npsn: '12345678', 
+    level: 'SMA/MA', 
+    logo: 'https://ui-avatars.com/api/?name=SM&background=4f46e5&color=fff&size=128', 
+    academicYear: '2025/2026', 
+    semester: 'Gasal', 
+    address: 'Jl. Pendidikan No. 1, Kec. Ilmu, Kota Pelajar', 
+    email: 'info@sman1edukasi.sch.id', 
+    link_kisi_sts_gasal: '', link_kisi_sts_genap: '', link_soal_sts_gasal: '', link_soal_sts_genap: '', 
+    link_kisi_sas: '', link_kisi_sat: '', link_soal_sas: '', link_soal_sat: '', 
+    link_kisi_psaj_praktik: '', link_kisi_psaj_tulis: '', link_soal_psaj_praktik: '', link_soal_psaj_tulis: '',
+    pekan_efektif_gasal: '18', pekan_efektif_genap: '16'
+};
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -69,7 +82,7 @@ const calculateJamTime = (jamKeString) => {
     return `${format(getMinsCorrected(startJam, false))} - ${format(getMinsCorrected(endJam, true))}`;
 };
 
-// --- HOOK FIREBASE AMAN (ANTI RESET & ROBUST ERROR HANDLING) ---
+// --- HOOK FIREBASE AMAN ---
 const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
     const [data, setData] = useState(initialValue);
     const [loading, setLoading] = useState(true);
@@ -99,10 +112,9 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
             }
         }, (err) => {
             console.error(`Firebase Sync Error on ${docId}:`, err);
-            // Tangani error jika permissions ditolak (misal saat deploy ke Vercel tanpa merubah rules Firebase)
             if (!hasLoadedInitial.current) {
                  hasLoadedInitial.current = true; 
-                 setLoading(false); // Pastikan loading spinner hilang agar aplikasi tidak hang
+                 setLoading(false); 
                  if (onLoaded) onLoaded();
             }
         });
@@ -113,7 +125,7 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
         if (!fbUser) return;
         try {
             const valueToStore = typeof newDataAction === 'function' ? newDataAction(dataRef.current) : newDataAction;
-            setData(valueToStore); // Perbarui tampilan UI secara instan
+            setData(valueToStore); 
             const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
             await setDoc(docRef, { items: valueToStore }, { merge: true }); 
         } catch (error) {
@@ -179,22 +191,59 @@ const JurnalKokurikuler = ({ showToast }) => (
     </div>
 );
 
-const DokumenView = ({ title, type, schoolDocs }) => {
+// --- KOMPONEN KEBUTUHAN KBM GURU ---
+const KebutuhanKBMGuru = ({ schoolDocs }) => {
+    const [popupLink, setPopupLink] = useState(null);
+
+    const getEmbedLink = (link) => {
+        if (!link) return '';
+        if (link.includes('drive.google.com')) {
+            return link.replace(/\/view.*/, '/preview');
+        }
+        return link;
+    };
+
     return (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm animate-fade-in text-center">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText size={32} />
-            </div>
-            <h2 className="text-xl font-bold text-slate-800 mb-2">{title}</h2>
-            {schoolDocs && schoolDocs[type] ? (
-                <div className="mt-4">
-                    <a href={schoolDocs[type]} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">
-                        <Download size={18} /> Unduh / Lihat Dokumen
-                    </a>
+        <div className="space-y-6 animate-fade-in relative">
+            {popupLink && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col animate-fade-in-down overflow-hidden">
+                        <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><FileText size={20} className="text-indigo-600" /> Pratinjau Dokumen</h3>
+                            <div className="flex items-center gap-3">
+                                <a href={popupLink} target="_blank" rel="noreferrer" className="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"><LinkIcon size={16}/> Buka di Tab Baru</a>
+                                <button onClick={() => setPopupLink(null)} className="text-slate-400 hover:text-red-500 bg-slate-200 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><X size={20} /></button>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-slate-200/50 p-2">
+                            <iframe src={getEmbedLink(popupLink)} className="w-full h-full rounded-xl border-none shadow-sm bg-white" title="Pratinjau Dokumen"></iframe>
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <p className="text-slate-500 mt-2">Dokumen belum diunggah oleh admin.</p>
             )}
+
+            <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl"><BookOpen size={32} /></div>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Kebutuhan KBM Guru</h2>
+                    <p className="text-slate-500 text-sm">Akses cepat ke dokumen SK Pembagian Tugas Mengajar dan Kalender Pendidikan.</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-indigo-300">
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4"><FileText size={32} /></div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-2">SK Pembagian Tugas (KBM)</h3>
+                    <p className="text-sm text-slate-500 mb-6 px-4">Dokumen resmi pembagian jam mengajar dan tugas tambahan guru.</p>
+                    <button onClick={() => schoolDocs?.sk_kbm ? setPopupLink(schoolDocs.sk_kbm) : alert('Link SK KBM belum diatur oleh Admin.')} className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${schoolDocs?.sk_kbm ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}><Eye size={18} /> Tampilkan Dokumen</button>
+                </div>
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-emerald-300">
+                    <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4"><Calendar size={32} /></div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-2">Kalender Pendidikan & RPE</h3>
+                    <p className="text-sm text-slate-500 mb-6 px-4">Rincian Pekan Efektif dan kalender akademik kegiatan sekolah.</p>
+                    <button onClick={() => schoolDocs?.kalender_rpe ? setPopupLink(schoolDocs.kalender_rpe) : alert('Link Kalender Pendidikan belum diatur oleh Admin.')} className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${schoolDocs?.kalender_rpe ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}><Eye size={18} /> Tampilkan Dokumen</button>
+                </div>
+            </div>
         </div>
     );
 };
@@ -271,8 +320,8 @@ const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig }) => {
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, isPiket, isManagement, isWaliKelas, schoolConfig }) => {
     const [isHovered, setIsHovered] = useState(false);
     const menuGroups = [
-        { category: "Menu Utama", items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru'] }, { id: 'monitoring', label: 'Monitoring Guru', icon: Activity, roles: ['admin'] }, { id: 'analisis-siswa', label: 'Analisis Siswa', icon: BrainCircuit, roles: ['admin'] }, { id: 'data', label: 'Manajemen Data', icon: Database, roles: ['admin'] }, { id: 'generate-akun', label: 'Generate Akun', icon: Key, roles: ['admin'] }] },
-        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }] },
+        { category: "Menu Utama", items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru'] }, { id: 'kalender-akademik', label: 'Kalender Pendidikan', icon: CalendarDays, roles: ['admin', 'guru'] }, { id: 'monitoring', label: 'Monitoring Guru', icon: Activity, roles: ['admin'] }, { id: 'monitoring-perangkat', label: 'Monitoring Perangkat', icon: FileBadge, roles: ['admin'] }, { id: 'analisis-siswa', label: 'Analisis Siswa', icon: BrainCircuit, roles: ['admin'] }, { id: 'data', label: 'Manajemen Data', icon: Database, roles: ['admin'] }, { id: 'generate-akun', label: 'Generate Akun', icon: Key, roles: ['admin'] }] },
+        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }, { id: 'perangkat-ujian', label: 'Perangkat Ujian', icon: FileBadge, roles: ['guru'] }, { id: 'kebutuhan-kbm', label: 'Kebutuhan KBM Guru', icon: FileText, roles: ['guru'] }] },
         { category: "Tugas Tambahan", items: [{ id: 'jurnal-piket', label: 'Jurnal Piket', icon: ClipboardCheck, roles: ['guru'] }] }
     ];
 
@@ -280,18 +329,21 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
     return (
         <>
             <div className={`fixed inset-0 bg-slate-900/50 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsOpen(false)}></div>
-            <div className={`fixed md:relative inset-y-0 left-0 z-50 bg-slate-900 text-white sidebar-transition flex flex-col shadow-2xl md:shadow-none overflow-hidden ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'} md:w-20 hover:md:w-64`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+            <div className={`fixed md:relative inset-y-0 left-0 z-50 bg-slate-900 text-white sidebar-transition flex flex-col shadow-2xl md:shadow-none transition-all duration-300 ease-in-out h-[100dvh] md:h-auto ${isOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'} md:w-20 hover:md:w-64`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
                 <div className="flex flex-col justify-center h-20 px-6 bg-slate-950 border-b border-slate-800 shrink-0">
                     <div className="flex items-center gap-3 font-bold text-xl tracking-tight text-white">
                         <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                             {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> : <School size={20} className="text-indigo-600" />}
                         </div>
-                        <span className={`whitespace-nowrap transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-100' : 'opacity-0 md:hidden'}`}>SIJAGA</span>
+                        <div className={`flex flex-col transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-100 w-auto' : 'opacity-0 md:hidden w-0 overflow-hidden'}`}>
+                            <span className="text-lg leading-none">SIJAGA</span>
+                            <span className="text-[8.5px] text-slate-400 mt-1 font-medium leading-none uppercase tracking-wide whitespace-nowrap">Sistem Jurnal & Administrasi</span>
+                        </div>
                         <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white ml-auto"><X size={24} /></button>
                     </div>
                 </div>
                 
-                <div className="flex-1 px-3 py-6 overflow-y-auto no-scrollbar overflow-x-hidden">
+                <div className="flex-1 px-3 py-6 overflow-y-auto overscroll-y-contain touch-pan-y scroll-smooth pb-24 overflow-x-hidden">
                     {menuGroups.map((group, idx) => {
                         const visibleItems = group.items.filter(item => {
                             if (item.id === 'jurnal-piket') return isPiket;
@@ -396,7 +448,7 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
             </div>
             {user.role === 'guru' && !isManagement && (
                 <div className={`rounded-2xl shadow-sm overflow-hidden animate-fade-in-down border ${pendingTasks.length > 0 ? 'bg-white border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                    <div className={`p-4 border-b flex items-center gap-2 ${pendingTasks.length > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-100/50 border-emerald-200'}`}>{pendingTasks.length > 0 ? <AlertCircle size={20} className="text-red-500" /> : <CheckCircle size={20} className="text-emerald-500" />}<h3 className={`font-bold ${pendingTasks.length > 0 ? 'text-red-700' : 'text-emerald-700'}`}>{pendingTasks.length > 0 ? `Daftar Pekerjaan Belum Selesai (${pendingTasks.length})` : 'Semua Pekerjaan Hari Ini Selesai!'}</h3></div>
+                    <div className={`p-4 border-b border-slate-100 flex items-center gap-2 ${pendingTasks.length > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-100/50 border-emerald-200'}`}>{pendingTasks.length > 0 ? <AlertCircle size={20} className="text-red-500" /> : <CheckCircle size={20} className="text-emerald-500" />}<h3 className={`font-bold ${pendingTasks.length > 0 ? 'text-red-700' : 'text-emerald-700'}`}>{pendingTasks.length > 0 ? `Daftar Pekerjaan Belum Selesai (${pendingTasks.length})` : 'Semua Pekerjaan Hari Ini Selesai!'}</h3></div>
                     {pendingTasks.length > 0 ? (
                         <div className="divide-y divide-slate-100">
                             {pendingTasks.map((task) => (
@@ -450,12 +502,70 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
                         <div className="grid grid-cols-2 gap-4">
                             <button onClick={() => window.open('https://erapor-zeta.vercel.app/', '_blank')} className="p-5 bg-blue-50 text-blue-700 rounded-2xl text-sm font-bold hover:bg-blue-100 flex flex-col items-center gap-3 border border-blue-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><Plus size={24} /></div>Input Nilai</button>
                             <button onClick={() => setActiveTab('presensi')} className="p-5 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-bold hover:bg-emerald-100 flex flex-col items-center gap-3 border border-emerald-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><UserCheck size={24} /></div>Presensi</button>
-                            <button onClick={() => setActiveTab('drive-guru')} className="p-5 bg-purple-50 text-purple-700 rounded-2xl text-sm font-bold hover:bg-purple-100 flex flex-col items-center gap-3 border border-purple-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><FileText size={24} /></div>Upload Admin</button>
+                            <button onClick={() => setActiveTab('perangkat-ujian')} className="p-5 bg-purple-50 text-purple-700 rounded-2xl text-sm font-bold hover:bg-purple-100 flex flex-col items-center gap-3 border border-purple-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><FileBadge size={24} /></div>Unggah Ujian</button>
                             <button onClick={() => window.open('https://erapor-zeta.vercel.app/', '_blank')} className="p-5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-bold hover:bg-orange-100 flex flex-col items-center gap-3 border border-orange-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><BarChart3 size={24} /></div>Analisis</button>
                         </div>
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+const KalenderAkademik = ({ calendarEvents, schoolConfig }) => {
+    const sortedEvents = (calendarEvents || []).sort((a,b) => new Date(a.date) - new Date(b.date));
+    const pekanGasal = schoolConfig?.pekan_efektif_gasal || '0';
+    const pekanGenap = schoolConfig?.pekan_efektif_genap || '0';
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><CalendarDays size={32} /></div>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Kalender Pendidikan</h2>
+                    <p className="text-slate-500 text-sm">Informasi jumlah pekan efektif, jadwal ujian, hari libur, dan kegiatan operasional sekolah.</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="p-4 bg-indigo-50 text-indigo-600 rounded-full"><Flag size={32} /></div>
+                    <div>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Semester Gasal</p>
+                        <h3 className="text-3xl font-bold text-slate-800">{pekanGasal} <span className="text-base font-medium text-slate-500">Pekan Efektif</span></h3>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="p-4 bg-emerald-50 text-emerald-600 rounded-full"><Flag size={32} /></div>
+                    <div>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Semester Genap</p>
+                        <h3 className="text-3xl font-bold text-slate-800">{pekanGenap} <span className="text-base font-medium text-slate-500">Pekan Efektif</span></h3>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="font-bold text-lg text-slate-800 mb-6 border-b border-slate-100 pb-4 flex items-center gap-2"><Megaphone size={20} className="text-blue-600"/> Agenda & Hari Libur (SK Sekolah)</h3>
+                <div className="space-y-6 pl-2 border-l-2 border-slate-100">
+                    {sortedEvents.length > 0 ? sortedEvents.map((ev, idx) => (
+                        <div key={idx} className="relative pl-6">
+                            <div className={`absolute -left-[9px] top-4 w-4 h-4 rounded-full border-2 border-white ring-2 ${ev.type === 'Libur' ? 'bg-red-500 ring-red-100' : ev.type === 'Ujian' ? 'bg-orange-500 ring-orange-100' : 'bg-blue-500 ring-blue-100'}`}></div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 hover:shadow-md transition-shadow">
+                                <div className="flex flex-wrap gap-2 items-center justify-between mb-2">
+                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${ev.type === 'Libur' ? 'bg-red-50 text-red-600 border-red-200' : ev.type === 'Ujian' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{ev.type}</span>
+                                    <span className="text-xs font-mono font-bold text-slate-500">{new Date(ev.date).toLocaleDateString('id-ID', { weekday: 'long', day:'numeric', month:'long', year:'numeric'})} {ev.endDate ? ` s/d ${new Date(ev.endDate).toLocaleDateString('id-ID', { weekday: 'long', day:'numeric', month:'long', year:'numeric'})}` : ''}</span>
+                                </div>
+                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                                    {ev.type === 'Libur' ? <Tent size={16} className="text-red-500"/> : ev.type === 'Ujian' ? <FileBadge size={16} className="text-orange-500"/> : <CalendarDays size={16} className="text-blue-500"/>}
+                                    {ev.name}
+                                </h4>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400">Belum ada agenda pendidikan yang ditambahkan oleh admin.</div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
@@ -596,7 +706,7 @@ const AbsensiGuru = ({ user, teacherAttendance, setTeacherAttendance, classLogs,
                             const isEntered = (classLogs || []).some(log => log.scheduleId === schedule.id && log.date === today);
                             
                             return (
-                                <div key={`${schedule.id}-${idx}`} className={`p-5 rounded-xl border transition-all ${isEntered ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:border-blue-400 shadow-sm'}`}>
+                                <div key={`${schedule.id}-${idx}`} className={`p-5 rounded-xl border transition-all ${isEntered ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-100 hover:border-blue-400 shadow-sm'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <span className="font-bold text-slate-800 text-lg">{schedule.class}</span>
                                         <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{schedule.time || '--:--'}</span>
@@ -638,7 +748,7 @@ const JadwalGuru = ({ user, schedules }) => {
                     const daily = mySchedules.filter(s => s.day === day).sort((a,b) => (a.time||'').localeCompare(b.time||''));
                     if (daily.length === 0) return null;
                     return (
-                        <div key={dIdx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div className="bg-slate-50 px-6 py-4 border-b border-slate-200"><h3 className="font-bold text-slate-800">{day}</h3></div><div className="divide-y divide-slate-100">{daily.map((sc, idx) => (<div key={idx} className="p-4 hover:bg-slate-50"><div className="flex justify-between mb-1"><span className="font-bold text-indigo-600 font-mono text-sm">Jam {sc.jamKe || '-'} ({sc.time})</span><span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{sc.class}</span></div><h4 className="font-bold text-slate-700">{sc.subject}</h4><div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><MapPin size={12} /> Ruang {sc.room}</div></div>))}</div></div>
+                        <div key={dIdx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"><div className="bg-slate-50 px-6 py-4 border-b border-slate-100"><h3 className="font-bold text-slate-800">{day}</h3></div><div className="divide-y divide-slate-100">{daily.map((sc, idx) => (<div key={idx} className="p-4 hover:bg-slate-50 transition-colors"><div className="flex justify-between mb-1"><span className="font-bold text-indigo-600 font-mono text-sm">Jam {sc.jamKe || '-'} ({sc.time})</span><span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{sc.class}</span></div><h4 className="font-bold text-slate-700">{sc.subject}</h4><div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><MapPin size={12} /> Ruang {sc.room}</div></div>))}</div></div>
                     );
                 })}
             </div>
@@ -667,7 +777,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
         try {
             const { jsPDF } = await import('https://esm.sh/jspdf@2.5.1');
             const autoTable = (await import('https://esm.sh/jspdf-autotable@3.5.29')).default;
-            const doc = new jsPDF('landscape'); // Menggunakan orientasi landscape agar muat banyak kolom
+            const doc = new jsPDF('landscape'); 
             const myJurnals = (jurnals || []).filter(j => j.teacherName === user.name).sort((a,b) => new Date(a.date) - new Date(b.date));
             const currentTeacher = (teachers || []).find(t => t.name === user.name);
 
@@ -681,13 +791,12 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
             doc.text(schoolConfig?.address || 'Alamat Sekolah Belum Diatur', 148, 22, { align: 'center' });
             doc.text(`Email: ${schoolConfig?.email || '-'}  |  NPSN: ${schoolConfig?.npsn || '-'}`, 148, 27, { align: 'center' });
             
-            // Garis pembatas Kop Surat
             doc.setLineWidth(0.5);
             doc.line(14, 31, 283, 31);
             doc.setLineWidth(0.1);
             doc.line(14, 32, 283, 32);
 
-            // --- IDENTITAS GURU & PELAJARAN ---
+            // --- IDENTITAS GURU ---
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             doc.text('JURNAL MENGAJAR GURU', 148, 42, { align: 'center' });
@@ -702,7 +811,6 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
             doc.text(`Tahun Pelajaran`, 200, 52); doc.text(`:  ${schoolConfig?.academicYear || '-'}`, 235, 52);
             doc.text(`Semester`, 200, 58); doc.text(`:  ${schoolConfig?.semester || '-'}`, 235, 58);
 
-            // --- TABEL JURNAL ---
             const columns = [
                 { header: 'No', dataKey: 'no' },
                 { header: 'Hari/Tanggal', dataKey: 'tanggal' },
@@ -747,12 +855,10 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
             // --- TANDA TANGAN ---
             const finalY = doc.lastAutoTable.finalY + 15;
             if (finalY < 170) {
-                // Cari data Kepala Sekolah dari array teachers
                 const principal = (teachers || []).find(t => t.status && t.status.toLowerCase().includes('kepala sekolah'));
                 const principalName = principal ? principal.name : '.......................................................';
                 const principalNip = principal && principal.nip && principal.nip !== '-' ? `NIP. ${principal.nip}` : '';
 
-                // Bagian Kepala Sekolah (Kiri) - Rata Tengah di koordinat x=55
                 doc.text(`Mengetahui,`, 55, finalY, { align: 'center' });
                 doc.text(`Kepala Sekolah`, 55, finalY + 5, { align: 'center' });
                 
@@ -764,8 +870,6 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                     doc.text(principalNip, 55, finalY + 30, { align: 'center' });
                 }
 
-                // Bagian Guru (Kanan) - Rata Tengah di koordinat x=235
-                // Ambil nama kota dari alamat (kata terakhir setelah koma), atau gunakan titik-titik jika tidak ada
                 const city = schoolConfig?.address ? schoolConfig.address.split(',').pop().trim() : '...................';
                 
                 doc.text(`${city}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 235, finalY, { align: 'center' });
@@ -793,7 +897,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
     }, [form]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
             {!selectedSchedule ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -805,7 +909,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                                 setSelectedSchedule(item); 
                                 if(isFilled) { setForm({ tujuan: existingJournal.tujuan, kegiatan: existingJournal.kegiatan, refleksi: existingJournal.refleksi, catatan: existingJournal.catatan }); showToast("Memuat jurnal untuk diedit."); }
                                 else { setForm({tujuan:'', kegiatan:'', refleksi:'', catatan:''}); }
-                            }} className={`bg-white p-6 rounded-xl border cursor-pointer hover:shadow-md transition-all ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
+                            }} className={`bg-white p-6 rounded-xl border cursor-pointer hover:shadow-md transition-all ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'}`}>
                                 <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg ${isFilled?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-600'}`}>Jam {item.jamKe || '-'} ({item.time})</span><span className={`text-xs ${isFilled?'text-emerald-600 font-bold':'text-slate-400'}`}>{isFilled?'Sudah Diisi (Klik untuk Edit)':'Klik untuk isi'}</span></div>
                                 <h4 className="font-bold text-lg text-slate-800">{item.subject}</h4><p className="text-slate-500 text-sm">Kelas {item.class} • Ruang {item.room}</p>
                             </div>
@@ -851,17 +955,240 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
 };
 
 const DriveAdministrasiGuru = ({ teacherDriveLinks, setTeacherDriveLinks, user, showToast }) => {
+    const userLinks = (teacherDriveLinks || {})[user.id] || {};
+    
     const handleFolder = (id) => {
-        const link = (teacherDriveLinks || {})[user.id]?.[id];
-        link ? window.open(link, '_blank') : showToast('Link belum diset Admin.', 'error');
+        const link = userLinks[id];
+        if (link) window.open(link, '_blank');
     };
+    
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[{id:'perangkat', title:'Perangkat Ajar', col:'bg-blue-100 text-blue-600'}, {id:'sas_sat', title:'Administrasi SAS/SAT', col:'bg-emerald-100 text-emerald-600'}, {id:'psaj', title:'Administrasi PSAJ', col:'bg-orange-100 text-orange-600'}].map(f => (
-                <button key={f.id} onClick={() => handleFolder(f.id)} className="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-lg flex flex-col items-center justify-center h-48 group transition-all">
-                    <div className={`p-4 rounded-full mb-4 group-hover:scale-110 transition-transform ${f.col}`}><Folder size={48} /></div><h3 className="font-bold text-slate-800">{f.title}</h3>
-                </button>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+            {[{id:'perangkat', title:'Perangkat Ajar', col:'bg-blue-100 text-blue-600'}, {id:'sas_sat', title:'Administrasi SAS/SAT', col:'bg-emerald-100 text-emerald-600'}, {id:'psaj', title:'Administrasi PSAJ', col:'bg-orange-100 text-orange-600'}].map(f => {
+                const hasLink = !!userLinks[f.id];
+                return (
+                    <button key={f.id} onClick={() => hasLink ? handleFolder(f.id) : null} disabled={!hasLink} className={`bg-white p-6 rounded-2xl border shadow-sm flex flex-col items-center justify-center h-48 transition-all ${hasLink ? 'hover:shadow-lg group cursor-pointer' : 'opacity-60 cursor-not-allowed grayscale'}`}>
+                        <div className={`p-4 rounded-full mb-4 ${hasLink ? 'group-hover:scale-110 transition-transform' : ''} ${f.col}`}>
+                            <Folder size={48} />
+                        </div>
+                        <h3 className="font-bold text-slate-800">{f.title}</h3>
+                        {!hasLink && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded mt-3 font-bold uppercase tracking-wider">Belum ditautkan admin</span>}
+                    </button>
+                )
+            })}
+        </div>
+    );
+};
+
+const MonitoringPerangkat = ({ perangkatLogs }) => {
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl"><FileBadge size={32} /></div>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Monitoring Perangkat Ujian</h2>
+                    <p className="text-slate-500 text-sm">Daftar perangkat dan dokumen ujian yang telah diunggah oleh guru beserta link buktinya.</p>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[600px]">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th className="p-4 font-bold text-slate-700">Waktu Konfirmasi</th>
+                                <th className="p-4 font-bold text-slate-700">Nama Guru</th>
+                                <th className="p-4 font-bold text-slate-700">Jenis Perangkat</th>
+                                <th className="p-4 text-right font-bold text-slate-700">Link Berkas Bukti</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {(perangkatLogs || []).sort((a,b) => b.timestamp - a.timestamp).map((log, i) => (
+                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4 text-slate-500 text-xs font-mono">{new Date(log.timestamp).toLocaleString('id-ID')}</td>
+                                    <td className="p-4 font-bold text-slate-800">{log.teacherName}</td>
+                                    <td className="p-4">
+                                        <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100">
+                                            {log.type}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <a href={log.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shadow-sm">
+                                            <LinkIcon size={14}/> Buka Berkas
+                                        </a>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!perangkatLogs || perangkatLogs.length === 0) && (
+                                <tr>
+                                    <td colSpan="4" className="p-8 text-center text-slate-400">Belum ada perangkat ujian yang diunggah.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, perangkatLogs, setPerangkatLogs }) => {
+    const [uploadModal, setUploadModal] = useState(null);
+    const [fileLink, setFileLink] = useState('');
+
+    const handleOpenModal = (menu) => {
+        if (!menu.driveLink) {
+            showToast('Link folder drive tujuan belum diatur atau tidak ditemukan.', 'error');
+            return;
+        }
+        setUploadModal(menu);
+        setFileLink('');
+    };
+
+    const handleConfirmUpload = async () => {
+        if (!fileLink.trim()) {
+            showToast('Mohon masukkan link berkas Anda sebagai bukti.', 'error');
+            return;
+        }
+
+        const newLog = {
+            id: Date.now().toString(),
+            teacherName: user.name,
+            type: `${uploadModal.prefix} - ${uploadModal.title} ${uploadModal.desc}`,
+            link: fileLink,
+            timestamp: Date.now()
+        };
+
+        try {
+            await setPerangkatLogs(prev => [newLog, ...(prev || [])]);
+            showToast('Berhasil mengonfirmasi unggahan!', 'success');
+            setUploadModal(null);
+        } catch (err) {
+            showToast('Gagal menyimpan log.', 'error');
+        }
+    };
+
+    const menuGasal = [
+        { id: 'sts_kisi_gasal', title: 'KISI & PEDOMAN STS', desc: 'GASAL', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_gasal, col: 'bg-blue-100 text-blue-600' },
+        { id: 'sts_soal_gasal', title: 'SOAL / PRAKTIK STS', desc: 'GASAL', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_gasal, col: 'bg-indigo-100 text-indigo-600' },
+        { id: 'sas_kisi', title: 'KISI & PEDOMAN SAS', desc: 'GASAL', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sas, col: 'bg-cyan-100 text-cyan-600' },
+        { id: 'sas_soal', title: 'SOAL SAS', desc: 'GASAL', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sas, col: 'bg-sky-100 text-sky-600' },
+    ];
+
+    const menuGenap = [
+        { id: 'sts_kisi_genap', title: 'KISI & PEDOMAN STS', desc: 'GENAP', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_genap, col: 'bg-emerald-100 text-emerald-600' },
+        { id: 'sts_soal_genap', title: 'SOAL / PRAKTIK STS', desc: 'GENAP', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_genap, col: 'bg-teal-100 text-teal-600' },
+        { id: 'sat_kisi', title: 'KISI & PEDOMAN SAT', desc: 'GENAP', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sat, col: 'bg-green-100 text-green-600' },
+        { id: 'sat_soal', title: 'SOAL SAT', desc: 'GENAP', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sat, col: 'bg-lime-100 text-lime-600' },
+    ];
+
+    const menuPSAJ = [
+        { id: 'psaj_kisi_praktik', title: 'KISI & PEDOMAN PSAJ', desc: 'PRAKTIK', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_kisi_psaj_praktik, col: 'bg-orange-100 text-orange-600' },
+        { id: 'psaj_soal_praktik', title: 'SOAL / KEGIATAN PSAJ', desc: 'PRAKTIK', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_praktik, col: 'bg-amber-100 text-amber-600' },
+        { id: 'psaj_kisi_tulis', title: 'KISI & PEDOMAN PSAJ', desc: 'TULIS', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_kisi_psaj_tulis, col: 'bg-pink-100 text-pink-600' },
+        { id: 'psaj_soal_tulis', title: 'SOAL / KEGIATAN PSAJ', desc: 'TULIS', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_tulis, col: 'bg-rose-100 text-rose-600' }
+    ];
+
+    return (
+        <div className="space-y-8 animate-fade-in relative">
+            {uploadModal && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in-down">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-slate-800">Unggah Bukti Dokumen</h3>
+                            <button onClick={() => setUploadModal(null)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-800">
+                                <p className="font-bold mb-2">Langkah-langkah:</p>
+                                <ol className="list-decimal pl-4 space-y-1">
+                                    <li>Klik tombol <strong>Buka Folder Drive</strong> di bawah.</li>
+                                    <li>Unggah (Upload) file Anda ke dalam folder tersebut.</li>
+                                    <li>Setelah terunggah, dapatkan link (Copy Link) file Anda tersebut.</li>
+                                    <li>Paste link tersebut ke kolom di bawah sebagai bukti.</li>
+                                </ol>
+                            </div>
+                            
+                            <button onClick={() => window.open(uploadModal.driveLink, '_blank')} className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 border border-slate-300">
+                                <Folder size={18} /> Buka Folder Drive Tujuan
+                            </button>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Link Berkas Anda (Bukti Unggah)</label>
+                                <input type="text" value={fileLink} onChange={e => setFileLink(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" placeholder="https://docs.google.com/..." />
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8 flex justify-end gap-3">
+                            <button onClick={() => setUploadModal(null)} className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">Batal</button>
+                            <button onClick={handleConfirmUpload} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all flex items-center gap-2"><Save size={16} /> Konfirmasi</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><Upload size={32} /></div>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Unggah Perangkat Ujian</h2>
+                    <p className="text-slate-500 text-sm">Pilih menu di bawah ini untuk mengunggah berkas perangkat ujian ke Google Drive.</p>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                    <Calendar size={20} className="text-blue-600" />
+                    <h3 className="font-bold text-lg text-slate-800">Semester Gasal</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {menuGasal.map(f => (
+                        <button key={f.id} onClick={() => handleOpenModal(f)} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-300 flex flex-col items-center justify-center text-center h-40 group transition-all">
+                            <div className={`p-3 rounded-full mb-3 group-hover:scale-110 transition-transform ${f.col}`}>
+                                <Upload size={24} />
+                            </div>
+                            <h3 className="font-bold text-slate-800 leading-tight text-xs uppercase">{f.title}</h3>
+                            {f.desc && <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase">{f.desc}</p>}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                    <Calendar size={20} className="text-emerald-600" />
+                    <h3 className="font-bold text-lg text-slate-800">Semester Genap</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {menuGenap.map(f => (
+                        <button key={f.id} onClick={() => handleOpenModal(f)} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-300 flex flex-col items-center justify-center text-center h-40 group transition-all">
+                            <div className={`p-3 rounded-full mb-3 group-hover:scale-110 transition-transform ${f.col}`}>
+                                <Upload size={24} />
+                            </div>
+                            <h3 className="font-bold text-slate-800 leading-tight text-xs uppercase">{f.title}</h3>
+                            {f.desc && <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase">{f.desc}</p>}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                    <GraduationCap size={20} className="text-orange-600" />
+                    <h3 className="font-bold text-lg text-slate-800">Penilaian Sumatif Akhir Jenjang (PSAJ)</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {menuPSAJ.map(f => (
+                        <button key={f.id} onClick={() => handleOpenModal(f)} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-orange-300 flex flex-col items-center justify-center text-center h-40 group transition-all">
+                            <div className={`p-3 rounded-full mb-3 group-hover:scale-110 transition-transform ${f.col}`}>
+                                <Upload size={24} />
+                            </div>
+                            <h3 className="font-bold text-slate-800 leading-tight text-xs uppercase">{f.title}</h3>
+                            {f.desc && <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase">{f.desc}</p>}
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };
@@ -870,7 +1197,6 @@ const PresensiSiswa = ({ students, attendance, setAttendance, showToast, user, s
     const today = new Date();
     const activeDay = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][today.getDay()];
     
-    // Penyaringan kelas berdasarkan jadwal guru hari ini
     const availableClasses = useMemo(() => {
         if (user.role === 'admin' || user.role === 'kepala_sekolah') {
             return (classes || []).map(c => c.name);
@@ -889,8 +1215,8 @@ const PresensiSiswa = ({ students, attendance, setAttendance, showToast, user, s
     }, [availableClasses, selectedClass]);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden animate-fade-in">
+            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold">Presensi Siswa</h2>
                     <p className="text-sm text-slate-500">Pilih kelas berdasarkan jadwal Anda hari ini</p>
@@ -905,9 +1231,9 @@ const PresensiSiswa = ({ students, attendance, setAttendance, showToast, user, s
             <div className="overflow-x-auto">
                 {availableClasses.length > 0 ? (
                     <table className="w-full text-left text-sm min-w-[600px]">
-                        <thead className="bg-slate-50 border-b"><tr><th className="p-4 text-slate-700">Nama Siswa</th><th className="p-4 text-slate-700">Status</th></tr></thead>
-                        <tbody className="divide-y">{(students || []).filter(s => s.class === selectedClass).map(s => (
-                            <tr key={s.id} className="hover:bg-slate-50"><td className="p-4 font-bold text-slate-800">{s.name} <span className="block text-xs font-normal text-slate-500">{s.class}</span></td><td className="p-4"><div className="flex gap-2">{['Hadir', 'Sakit', 'Izin', 'Alpha'].map(status => (
+                        <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 text-slate-700">Nama Siswa</th><th className="p-4 text-slate-700">Status</th></tr></thead>
+                        <tbody className="divide-y divide-slate-100">{(students || []).filter(s => s.class === selectedClass).map(s => (
+                            <tr key={s.id} className="hover:bg-slate-50 transition-colors"><td className="p-4 font-bold text-slate-800">{s.name} <span className="block text-xs font-normal text-slate-500">{s.class}</span></td><td className="p-4"><div className="flex gap-2">{['Hadir', 'Sakit', 'Izin', 'Alpha'].map(status => (
                                 <button key={status} onClick={() => setAttendance(p => ({...(p || {}), [s.id]: status}))} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${((attendance || {})[s.id] || 'Hadir') === status ? 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>{status}</button>
                             ))}</div></td></tr>
                         ))}
@@ -951,15 +1277,15 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Activity size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Monitoring Guru</h2><p className="text-slate-500 text-sm">Pantau kehadiran guru, aktivitas kelas, dan pengisian jurnal secara real-time</p></div></div></div>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-slate-100 bg-orange-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-orange-800 flex items-center gap-2"><Book size={20} /> Progres Pengisian Jurnal Hari Ini</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-orange-600 border border-orange-100">{activeDay}, {todayLocale}</span></div>
                 <div className="p-0 overflow-x-auto">
                     {teacherStatus.length > 0 ? (
                         <table className="w-full text-left text-sm min-w-[600px]">
-                            <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Guru</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jadwal Hari Ini</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jurnal Terisi</th><th className="px-6 py-3 font-semibold text-slate-600">Status</th></tr></thead>
+                            <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Guru</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jadwal Hari Ini</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jurnal Terisi</th><th className="px-6 py-3 font-semibold text-slate-600">Status</th></tr></thead>
                             <tbody className="divide-y divide-slate-100">
                                 {teacherStatus.map((stat, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-800">{stat.name}</td><td className="px-6 py-4 text-center"><span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-600">{stat.totalClasses} Kelas</span></td><td className="px-6 py-4 text-center"><span className={`px-2 py-1 rounded font-bold ${stat.filledClasses === stat.totalClasses ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{stat.filledClasses}</span></td><td className="px-6 py-4"><div className="w-full bg-slate-200 rounded-full h-2.5 w-32"><div className={`h-2.5 rounded-full ${stat.progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${stat.progress}%` }}></div></div><span className="text-xs text-slate-500 mt-1 block">{stat.progress}% Selesai</span></td></tr>
+                                    <tr key={idx} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-bold text-slate-800">{stat.name}</td><td className="px-6 py-4 text-center"><span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-600">{stat.totalClasses} Kelas</span></td><td className="px-6 py-4 text-center"><span className={`px-2 py-1 rounded font-bold ${stat.filledClasses === stat.totalClasses ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{stat.filledClasses}</span></td><td className="px-6 py-4"><div className="w-full bg-slate-200 rounded-full h-2.5 w-32"><div className={`h-2.5 rounded-full ${stat.progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${stat.progress}%` }}></div></div><span className="text-xs text-slate-500 mt-1 block">{stat.progress}% Selesai</span></td></tr>
                                 ))}
                             </tbody>
                         </table>
@@ -967,23 +1293,23 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
                 </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-100 bg-purple-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-purple-800 flex items-center gap-2"><MapPin size={20} /> Kehadiran (GPS)</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-purple-600 border border-purple-100">Hari Ini</span></div>
                     <div className="p-0 overflow-x-auto">
-                        <table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead><tbody className="divide-y divide-slate-100">
+                        <table className="w-full text-left text-sm"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead><tbody className="divide-y divide-slate-100">
                             {(teachers || []).map(t => {
                                 const log = (teacherAttendance || []).find(a => a.teacherName === t.name && a.date === today.toISOString().split('T')[0]);
-                                return (<tr key={t.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-800">{t.name}</td><td className="px-6 py-4 text-slate-500">{log ? log.time : '-'}</td><td className="px-6 py-4 text-right">{log ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span> : <span className="text-slate-400 text-xs font-bold">Belum Absen</span>}</td></tr>);
+                                return (<tr key={t.id} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-bold text-slate-800">{t.name}</td><td className="px-6 py-4 text-slate-500">{log ? log.time : '-'}</td><td className="px-6 py-4 text-right">{log ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span> : <span className="text-slate-400 text-xs font-bold">Belum Absen</span>}</td></tr>);
                             })}
                         </tbody></table>
                     </div>
                 </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-100 bg-blue-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-blue-800 flex items-center gap-2"><LogIn size={20} /> Aktivitas Masuk Kelas</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-100">Real-time</span></div>
                     <div className="p-0 overflow-x-auto">
                         {(classLogs || []).length > 0 ? (
-                            <table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Kelas / Mapel</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jam Masuk</th></tr></thead><tbody className="divide-y divide-slate-100">
-                                {(classLogs || []).slice(0, 10).map((log, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-6 py-4 font-bold text-slate-800">{log.teacherName}</td><td className="px-6 py-4"><div className="text-slate-800 font-bold">{log.className}</div><div className="text-xs text-slate-500">{log.subject}</div></td><td className="px-6 py-4 text-right text-blue-600 font-mono font-medium">{log.time}</td></tr>))}
+                            <table className="w-full text-left text-sm"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Kelas / Mapel</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jam Masuk</th></tr></thead><tbody className="divide-y divide-slate-100">
+                                {(classLogs || []).slice(0, 10).map((log, idx) => (<tr key={idx} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-bold text-slate-800">{log.teacherName}</td><td className="px-6 py-4"><div className="text-slate-800 font-bold">{log.className}</div><div className="text-xs text-slate-500">{log.subject}</div></td><td className="px-6 py-4 text-right text-blue-600 font-mono font-medium">{log.time}</td></tr>))}
                             </tbody></table>
                         ) : (<div className="p-8 text-center text-slate-400">Belum ada aktivitas masuk kelas hari ini.</div>)}
                     </div>
@@ -1080,17 +1406,17 @@ const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKel
                         </p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-slate-100 bg-red-50/50"><h4 className="font-bold text-slate-800 flex items-center gap-2"><AlertCircle size={18} className="text-red-500" /> Siswa dengan Absensi Tertinggi</h4></div>
                             <div className="p-0">
                                 {analysisData.atRiskStudents.length > 0 ? (
-                                    <table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Siswa</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jml. Absen</th></tr></thead><tbody className="divide-y divide-slate-100">
-                                        {analysisData.atRiskStudents.slice(0, 5).map((s, idx) => (<tr key={`risk-${idx}`} className="hover:bg-slate-50"><td className="px-6 py-3 font-medium text-slate-800">{s.name}</td><td className="px-6 py-3 text-right font-bold text-red-600">{s.count}x</td></tr>))}
+                                    <table className="w-full text-left text-sm"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Siswa</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jml. Absen</th></tr></thead><tbody className="divide-y divide-slate-100">
+                                        {analysisData.atRiskStudents.slice(0, 5).map((s, idx) => (<tr key={`risk-${idx}`} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-3 font-medium text-slate-800">{s.name}</td><td className="px-6 py-3 text-right font-bold text-red-600">{s.count}x</td></tr>))}
                                     </tbody></table>
                                 ) : (<div className="p-8 text-center text-slate-400">Tidak ada siswa yang berisiko tinggi.</div>)}
                             </div>
                         </div>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-[400px]">
                             <div className="p-6 border-b border-slate-100 bg-blue-50/50 shrink-0"><h4 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} className="text-blue-500" /> Catatan Kejadian Guru</h4></div>
                             <div className="p-6 overflow-y-auto flex-1 no-scrollbar space-y-6">
                                 {analysisData.teacherNotes.length > 0 ? (
@@ -1120,23 +1446,24 @@ const GenerateAkun = ({ teachers, accounts, setAccounts, showToast }) => {
         showToast(`Akun ${t.name} berhasil dibuat! Password default: 123`, 'success');
     };
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 animate-fade-in"><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><Key size={24} /></div><div><h2 className="text-xl font-bold text-slate-800">Generate Akun Guru</h2><p className="text-slate-500 text-sm">Klik generate untuk membuat akses login secara otomatis</p></div></div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 animate-fade-in"><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><Key size={24} /></div><div><h2 className="text-xl font-bold text-slate-800">Generate Akun Guru</h2><p className="text-slate-500 text-sm">Klik generate untuk membuat akses login secara otomatis</p></div></div>
             <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full text-left text-sm min-w-[600px]"><thead className="bg-slate-50 border-b"><tr><th className="p-4 text-slate-700 font-bold">Nama Guru</th><th className="p-4 text-slate-700 font-bold">Status Akun</th><th className="p-4 text-slate-700 font-bold">Kredensial</th><th className="p-4 text-right text-slate-700 font-bold">Aksi</th></tr></thead><tbody className="divide-y">{(teachers || []).map(t => {
+                <table className="w-full text-left text-sm min-w-[600px]"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 text-slate-700 font-bold">Nama Guru</th><th className="p-4 text-slate-700 font-bold">Status Akun</th><th className="p-4 text-slate-700 font-bold">Kredensial</th><th className="p-4 text-right text-slate-700 font-bold">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">{(teachers || []).map(t => {
                     const acc = (accounts || []).find(a => a.name === t.name);
-                    return (<tr key={t.id} className="hover:bg-slate-50"><td className="p-4 font-bold text-slate-800">{t.name}</td><td className="p-4">{acc ? <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1 w-fit"><CheckCircle size={12} /> Aktif</span> : <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold border border-slate-200">Belum Ada</span>}</td><td className="p-4">{acc ? <div className="font-mono text-xs"><span className="text-indigo-600 font-bold">{acc.username}</span><span className="text-slate-400 mx-2">|</span><span>******</span></div> : <span className="text-slate-400 italic">-</span>}</td><td className="p-4 text-right">{!acc ? <button onClick={() => handleGenerate(t)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-end ml-auto gap-2"><Plus size={14}/> Generate</button> : <span className="text-slate-400 text-xs font-bold px-4 py-2">Selesai</span>}</td></tr>)
+                    return (<tr key={t.id} className="hover:bg-slate-50 transition-colors"><td className="p-4 font-bold text-slate-800">{t.name}</td><td className="p-4">{acc ? <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1 w-fit"><CheckCircle size={12} /> Aktif</span> : <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold border border-slate-200">Belum Ada</span>}</td><td className="p-4">{acc ? <div className="font-mono text-xs"><span className="text-indigo-600 font-bold">{acc.username}</span><span className="text-slate-400 mx-2">|</span><span>******</span></div> : <span className="text-slate-400 italic">-</span>}</td><td className="p-4 text-right">{!acc ? <button onClick={() => handleGenerate(t)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-end ml-auto gap-2"><Plus size={14}/> Generate</button> : <span className="text-slate-400 text-xs font-bold px-4 py-2">Selesai</span>}</td></tr>)
                 })}</tbody></table>
             </div>
         </div>
     )
 };
 
-const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, setClasses, subjects, setSubjects, schedules, setSchedules, showConfirm, showToast, teacherDriveLinks, setTeacherDriveLinks, schoolConfig, setSchoolConfig, schoolDocs, setSchoolDocs, jurnals, setJurnals, teacherAttendance, setTeacherAttendance, classLogs, setClassLogs, accounts, setAccounts, attendance, setAttendance }) => {
+// --- MANAJEMEN DATA ---
+const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, setClasses, subjects, setSubjects, schedules, setSchedules, showConfirm, showToast, teacherDriveLinks, setTeacherDriveLinks, schoolConfig, setSchoolConfig, schoolDocs, setSchoolDocs, jurnals, setJurnals, teacherAttendance, setTeacherAttendance, classLogs, setClassLogs, accounts, setAccounts, attendance, setAttendance, calendarEvents, setCalendarEvents }) => {
     const [tab, setTab] = useState('siswa');
     const [selectedIds, setSelectedIds] = useState([]);
     const [localSchoolConfig, setLocalSchoolConfig] = useState(schoolConfig || INITIAL_SCHOOL_CONFIG);
+    const [localSchoolDocs, setLocalSchoolDocs] = useState(schoolDocs || INITIAL_SCHOOL_DOCS);
     
-    // --- STATE UNTUK MODAL EDIT ---
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({});
@@ -1148,6 +1475,10 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
     useEffect(() => {
         if (schoolConfig) setLocalSchoolConfig(schoolConfig);
     }, [schoolConfig]);
+
+    useEffect(() => {
+        if (schoolDocs) setLocalSchoolDocs(schoolDocs);
+    }, [schoolDocs]);
 
     const handleDownloadTemplate = async (type) => {
         try {
@@ -1223,7 +1554,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
         const backupData = {
             teachers, students, classes, subjects, schedules, jurnals,
             teacherAttendance, classLogs, accounts, attendance,
-            teacherDriveLinks, schoolConfig, schoolDocs
+            teacherDriveLinks, schoolConfig, schoolDocs, calendarEvents
         };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
         const downloadAnchorNode = document.createElement('a');
@@ -1259,6 +1590,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                         if (data.teacherDriveLinks) await setTeacherDriveLinks(data.teacherDriveLinks);
                         if (data.schoolConfig) await setSchoolConfig(data.schoolConfig);
                         if (data.schoolDocs) await setSchoolDocs(data.schoolDocs);
+                        if (data.calendarEvents) await setCalendarEvents(data.calendarEvents);
                         showToast('Data berhasil dipulihkan secara menyeluruh dari backup!', 'success');
                     } catch(err) {
                         showToast('Terjadi kesalahan saat memulihkan data.', 'error');
@@ -1280,6 +1612,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                 if (tab === 'kelas') await setClasses(p => (p || []).filter(x => x.id !== id));
                 if (tab === 'mapel') await setSubjects(p => (p || []).filter(x => x.id !== id));
                 if (tab === 'jadwal') await setSchedules(p => (p || []).filter(x => x.id !== id));
+                if (tab === 'kalender') await setCalendarEvents(p => (p || []).filter(x => x.id !== id));
                 showToast("Data berhasil dihapus.", "success");
             } catch (err) {
                 showToast("Gagal menghapus data.", "error");
@@ -1295,6 +1628,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                 if (tab === 'kelas') await setClasses(p => (p || []).filter(x => !selectedIds.includes(x.id)));
                 if (tab === 'mapel') await setSubjects(p => (p || []).filter(x => !selectedIds.includes(x.id)));
                 if (tab === 'jadwal') await setSchedules(p => (p || []).filter(x => !selectedIds.includes(x.id)));
+                if (tab === 'kalender') await setCalendarEvents(p => (p || []).filter(x => !selectedIds.includes(x.id)));
                 setSelectedIds([]);
                 showToast("Data terpilih berhasil dihapus dari database.", "success");
             } catch (err) {
@@ -1303,30 +1637,46 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
         });
     };
 
-    // --- FUNGSI TAMBAH & EDIT DATA ---
     const handleAddClick = () => {
         setEditingItem(null); 
-        setFormData({}); 
+        if (tab === 'guru') {
+            setFormData({ link_perangkat: '', link_sas_sat: '', link_psaj: '' });
+        } else if (tab === 'kalender') {
+            setFormData({ type: 'Kegiatan' });
+        } else {
+            setFormData({}); 
+        }
         setShowEditModal(true);
     };
 
     const handleEditClick = (item) => {
         setEditingItem(item);
-        setFormData({ ...item });
+        if (tab === 'guru') {
+            const links = (teacherDriveLinks || {})[item.id] || {};
+            setFormData({ ...item, link_perangkat: links.perangkat || '', link_sas_sat: links.sas_sat || '', link_psaj: links.psaj || '' });
+        } else {
+            setFormData({ ...item });
+        }
         setShowEditModal(true);
     };
 
     const handleSaveEdit = async () => {
         try {
             const isEditing = !!editingItem;
-            const newItem = { ...formData, id: isEditing ? editingItem.id : generateId() };
+            const newItemId = isEditing ? editingItem.id : generateId();
+            const newItem = { ...formData, id: newItemId };
+
+            const teacherData = { ...newItem };
+            delete teacherData.link_perangkat;
+            delete teacherData.link_sas_sat;
+            delete teacherData.link_psaj;
 
             const updateData = (p) => {
                 const arr = p || [];
                 if (isEditing) {
-                    return arr.map(x => x.id === editingItem.id ? { ...x, ...formData } : x);
+                    return arr.map(x => x.id === editingItem.id ? (tab === 'guru' ? teacherData : newItem) : x);
                 } else {
-                    return [...arr, newItem];
+                    return [...arr, tab === 'guru' ? teacherData : newItem];
                 }
             };
 
@@ -1334,12 +1684,22 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                 await setStudents(updateData);
             } else if (tab === 'guru') {
                 await setTeachers(updateData);
+                await setTeacherDriveLinks(prev => ({
+                    ...(prev || {}),
+                    [newItemId]: {
+                        perangkat: formData.link_perangkat || '',
+                        sas_sat: formData.link_sas_sat || '',
+                        psaj: formData.link_psaj || ''
+                    }
+                }));
             } else if (tab === 'kelas') {
                 await setClasses(updateData);
             } else if (tab === 'mapel') {
                 await setSubjects(updateData);
             } else if (tab === 'jadwal') {
                 await setSchedules(updateData);
+            } else if (tab === 'kalender') {
+                await setCalendarEvents(updateData);
             }
             
             setShowEditModal(false);
@@ -1375,18 +1735,18 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
     const handleSaveSchoolConfig = async () => {
         try {
             await setSchoolConfig(localSchoolConfig);
-            showToast("Konfigurasi dan Logo Sekolah berhasil divalidasi & disimpan ke Database!");
+            await setSchoolDocs(localSchoolDocs);
+            showToast("Data berhasil divalidasi & disimpan ke Database!");
         } catch (e) {
-            showToast("Gagal menyimpan konfigurasi", "error");
+            showToast("Gagal menyimpan data", "error");
         }
     };
 
     return (
         <div className="space-y-6 relative">
-            {/* MODAL EDIT & TAMBAH DATA */}
             {showEditModal && (
                 <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in-down">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in-down max-h-[90vh] overflow-y-auto no-scrollbar">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-slate-800 capitalize">
                                 {editingItem ? `Edit Data ${tab}` : `Tambah Data ${tab}`}
@@ -1403,7 +1763,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                                         <div><label className="block text-sm font-bold text-slate-700 mb-1">Kelas</label><input type="text" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
                                         <div><label className="block text-sm font-bold text-slate-700 mb-1">L/P</label><input type="text" value={formData.gender || ''} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
                                     </div>
-                                    <div><label className="block text-sm font-bold text-slate-700 mb-1">Status</label><select value={formData.status || 'Aktif'} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none"><option value="Aktif">Aktif</option><option value="Pindah">Pindah</option><option value="Lulus">Lulus</option></select></div>
+                                    <div><label className="block text-sm font-bold text-slate-700 mb-1">Status</label><select value={formData.status || 'Aktif'} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white"><option value="Aktif">Aktif</option><option value="Pindah">Pindah</option><option value="Lulus">Lulus</option></select></div>
                                 </>
                             )}
                             {tab === 'guru' && (
@@ -1412,6 +1772,15 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">NIP</label><input type="text" value={formData.nip || ''} onChange={e => setFormData({...formData, nip: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">Mapel</label><input type="text" value={formData.mapel || ''} onChange={e => setFormData({...formData, mapel: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">Tugas Tambahan</label><input type="text" value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
+                                    
+                                    <div className="pt-4 border-t border-slate-200 mt-2">
+                                        <h4 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2"><LinkIcon size={16}/> Link Drive Administrasi Guru</h4>
+                                        <div className="space-y-3">
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Link Perangkat Ajar</label><input type="text" value={formData.link_perangkat || ''} onChange={e => setFormData({...formData, link_perangkat: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-indigo-500 outline-none" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Link Administrasi SAS/SAT</label><input type="text" value={formData.link_sas_sat || ''} onChange={e => setFormData({...formData, link_sas_sat: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-indigo-500 outline-none" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Link Administrasi PSAJ</label><input type="text" value={formData.link_psaj || ''} onChange={e => setFormData({...formData, link_psaj: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-indigo-500 outline-none" placeholder="https://drive..." /></div>
+                                        </div>
+                                    </div>
                                 </>
                             )}
                             {tab === 'kelas' && (
@@ -1443,6 +1812,16 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">Guru</label><input type="text" value={formData.teacherName || ''} onChange={e => setFormData({...formData, teacherName: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
                                 </>
                             )}
+                            {tab === 'kalender' && (
+                                <>
+                                    <div><label className="block text-sm font-bold text-slate-700 mb-1">Nama Kegiatan/Agenda</label><input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" placeholder="Cth: Penilaian Tengah Semester" /></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Mulai</label><input type="date" value={formData.date || ''} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
+                                        <div><label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Selesai (Opsional)</label><input type="date" value={formData.endDate || ''} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
+                                    </div>
+                                    <div><label className="block text-sm font-bold text-slate-700 mb-1">Jenis Agenda</label><select value={formData.type || 'Kegiatan'} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white"><option value="Kegiatan">Kegiatan Sekolah</option><option value="Ujian">Ujian / Asesmen</option><option value="Libur">Hari Libur</option></select></div>
+                                </>
+                            )}
                         </div>
                         <div className="mt-8 flex justify-end gap-3">
                             <button onClick={() => setShowEditModal(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">Batal</button>
@@ -1452,79 +1831,153 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                 </div>
             )}
 
-            <div className="flex gap-2 overflow-x-auto border-b pb-2">
-                {['siswa', 'guru', 'kelas', 'mapel', 'jadwal', 'sekolah', 'backup'].map(t => (
-                    <button key={t} onClick={() => setTab(t)} className={`px-5 py-3 font-bold text-sm rounded-t-xl capitalize transition-all ${tab === t ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>
+            <div className="flex gap-2 overflow-x-auto border-b border-slate-100 pb-2">
+                {['siswa', 'guru', 'kelas', 'mapel', 'jadwal', 'kalender', 'sekolah', 'backup'].map(t => (
+                    <button key={t} onClick={() => setTab(t)} className={`px-5 py-3 font-bold text-sm rounded-t-xl capitalize transition-all ${tab === t ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
                         {t}
                     </button>
                 ))}
             </div>
             
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm min-h-[400px] animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[400px] animate-fade-in">
                 {(tab !== 'sekolah' && tab !== 'backup') && (
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div className="flex items-center gap-3">
                             <h3 className="font-bold text-xl text-slate-800 capitalize">Manajemen {tab}</h3>
                             {selectedIds.length > 0 && (
-                                <button onClick={handleBulkDelete} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 flex items-center gap-2 animate-fade-in"><Trash2 size={14}/> Hapus Terpilih ({selectedIds.length})</button>
+                                <button onClick={handleBulkDelete} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 flex items-center gap-2 animate-fade-in"><Trash2 size={14}/> Hapus Terpilih ({selectedIds.length})</button>
                             )}
                         </div>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                             <input type="file" ref={fileInputRef} style={{display: 'none'}} accept=".xlsx, .xls" onChange={handleFileChange} />
-                            <button onClick={() => handleDownloadTemplate(tab)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 flex items-center gap-2 transition-colors"><FileSpreadsheet size={16} /> Unduh Template</button>
-                            <button onClick={handleImportClick} className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-200 flex items-center gap-2 transition-colors"><Upload size={16} /> Import Excel</button>
-                            <button onClick={handleAddClick} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 flex items-center gap-2 transition-colors shadow-md shadow-indigo-200"><Plus size={16} /> Tambah Manual</button>
+                            {tab !== 'kalender' && <button onClick={() => handleDownloadTemplate(tab)} className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-100 flex items-center gap-2 transition-colors"><FileSpreadsheet size={16} /> Unduh Template</button>}
+                            {tab !== 'kalender' && <button onClick={handleImportClick} className="px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl text-sm font-bold hover:bg-emerald-100 flex items-center gap-2 transition-colors"><Upload size={16} /> Import Excel</button>}
+                            <button onClick={handleAddClick} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 flex items-center gap-2 transition-colors shadow-md shadow-indigo-200/50"><Plus size={16} /> Tambah Manual</button>
+                        </div>
+                    </div>
+                )}
+
+                {tab === 'kalender' && (
+                    <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-indigo-800 flex items-center gap-2"><CalendarDays size={18}/> Pengaturan Jumlah Pekan Efektif</h4>
+                            <button onClick={handleSaveSchoolConfig} className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-colors flex items-center gap-2">
+                                <Save size={14} /> Simpan Pekan
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-xs font-bold text-indigo-700 mb-1">Semester Gasal</label><input type="text" value={localSchoolConfig.pekan_efektif_gasal || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, pekan_efektif_gasal: e.target.value})} className="w-full p-2.5 border border-indigo-200 rounded-lg focus:ring-indigo-500 outline-none text-sm font-bold bg-white" placeholder="Cth: 18" /></div>
+                            <div><label className="block text-xs font-bold text-indigo-700 mb-1">Semester Genap</label><input type="text" value={localSchoolConfig.pekan_efektif_genap || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, pekan_efektif_genap: e.target.value})} className="w-full p-2.5 border border-indigo-200 rounded-lg focus:ring-indigo-500 outline-none text-sm font-bold bg-white" placeholder="Cth: 16" /></div>
                         </div>
                     </div>
                 )}
 
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
                     {tab === 'siswa' && (
-                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b"><tr><HeaderCheckbox items={students} /><th className="p-4 font-bold text-slate-700">Nama Lengkap</th><th className="p-4 font-bold text-slate-700">NIS</th><th className="p-4 font-bold text-slate-700">Kelas</th><th className="p-4 font-bold text-slate-700">L/P</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y">
-                            {(students || []).map(s => (<tr key={s.id} className="hover:bg-slate-50"><CheckboxCell id={s.id}/><td className="p-4 font-bold">{s.name}</td><td className="p-4 font-mono text-slate-500">{s.nis}</td><td className="p-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs font-bold">{s.class}</span></td><td className="p-4">{s.gender}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button></div></td></tr>))}
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={students} /><th className="p-4 font-bold text-slate-700">Nama Lengkap</th><th className="p-4 font-bold text-slate-700">NIS</th><th className="p-4 font-bold text-slate-700">Kelas</th><th className="p-4 font-bold text-slate-700">L/P</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(students || []).map(s => (<tr key={s.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={s.id}/><td className="p-4 font-bold text-slate-800">{s.name}</td><td className="p-4 font-mono text-slate-500">{s.nis}</td><td className="p-4"><span className="px-2.5 py-1 bg-slate-100 rounded-md text-xs font-bold border border-slate-200">{s.class}</span></td><td className="p-4 text-slate-600">{s.gender}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>))}
                         </tbody></table>
                     )}
                     {tab === 'guru' && (
-                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b"><tr><HeaderCheckbox items={teachers} /><th className="p-4 font-bold text-slate-700">Nama Guru</th><th className="p-4 font-bold text-slate-700">NIP</th><th className="p-4 font-bold text-slate-700">Mapel</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y">
-                            {(teachers || []).map(t => (<tr key={t.id} className="hover:bg-slate-50"><CheckboxCell id={t.id}/><td className="p-4 font-bold">{t.name}</td><td className="p-4 font-mono text-slate-500">{t.nip}</td><td className="p-4">{t.mapel}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(t)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(t.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button></div></td></tr>))}
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={teachers} /><th className="p-4 font-bold text-slate-700">Nama Guru</th><th className="p-4 font-bold text-slate-700">NIP</th><th className="p-4 font-bold text-slate-700">Mapel</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(teachers || []).map(t => (<tr key={t.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={t.id}/><td className="p-4 font-bold text-slate-800">{t.name}</td><td className="p-4 font-mono text-slate-500">{t.nip}</td><td className="p-4 text-slate-600">{t.mapel}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(t)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(t.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>))}
                         </tbody></table>
                     )}
                     {tab === 'kelas' && (
-                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b"><tr><HeaderCheckbox items={classes} /><th className="p-4 font-bold text-slate-700">Nama Kelas</th><th className="p-4 font-bold text-slate-700">Wali Kelas</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y">
-                            {(classes || []).map(c => (<tr key={c.id} className="hover:bg-slate-50"><CheckboxCell id={c.id}/><td className="p-4 font-bold text-lg">{c.name}</td><td className="p-4 text-slate-600">{c.wali}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(c)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(c.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button></div></td></tr>))}
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={classes} /><th className="p-4 font-bold text-slate-700">Nama Kelas</th><th className="p-4 font-bold text-slate-700">Wali Kelas</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(classes || []).map(c => (<tr key={c.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={c.id}/><td className="p-4 font-bold text-lg text-slate-800">{c.name}</td><td className="p-4 text-slate-600">{c.wali}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(c)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(c.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>))}
                         </tbody></table>
                     )}
                     {tab === 'mapel' && (
-                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b"><tr><HeaderCheckbox items={subjects} /><th className="p-4 font-bold text-slate-700">Kode</th><th className="p-4 font-bold text-slate-700">Nama Mata Pelajaran</th><th className="p-4 font-bold text-slate-700">KKTP</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y">
-                            {(subjects || []).map(s => (<tr key={s.id} className="hover:bg-slate-50"><CheckboxCell id={s.id}/><td className="p-4 font-mono font-bold text-indigo-600">{s.code}</td><td className="p-4 font-bold">{s.name}</td><td className="p-4">{s.kktp}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button></div></td></tr>))}
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={subjects} /><th className="p-4 font-bold text-slate-700">Kode</th><th className="p-4 font-bold text-slate-700">Nama Mata Pelajaran</th><th className="p-4 font-bold text-slate-700">KKTP</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(subjects || []).map(s => (<tr key={s.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={s.id}/><td className="p-4 font-mono font-bold text-indigo-600">{s.code}</td><td className="p-4 font-bold text-slate-800">{s.name}</td><td className="p-4 text-slate-600">{s.kktp}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>))}
                         </tbody></table>
                     )}
                     {tab === 'jadwal' && (
-                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b"><tr><HeaderCheckbox items={schedules} /><th className="p-4 font-bold text-slate-700">Hari</th><th className="p-4 font-bold text-slate-700">Jam Ke</th><th className="p-4 font-bold text-slate-700">Waktu</th><th className="p-4 font-bold text-slate-700">Kelas</th><th className="p-4 font-bold text-slate-700">Mapel</th><th className="p-4 font-bold text-slate-700">Guru</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y">
-                            {(schedules || []).map(s => (<tr key={s.id} className="hover:bg-slate-50"><CheckboxCell id={s.id}/><td className="p-4 font-bold">{s.day}</td><td className="p-4 font-bold text-indigo-600">{s.jamKe || '-'}</td><td className="p-4 text-slate-500 font-mono">{s.time}</td><td className="p-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs font-bold">{s.class}</span></td><td className="p-4">{s.subject}</td><td className="p-4 text-slate-600">{s.teacherName}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button></div></td></tr>))}
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={schedules} /><th className="p-4 font-bold text-slate-700">Hari</th><th className="p-4 font-bold text-slate-700">Jam Ke</th><th className="p-4 font-bold text-slate-700">Waktu</th><th className="p-4 font-bold text-slate-700">Kelas</th><th className="p-4 font-bold text-slate-700">Mapel</th><th className="p-4 font-bold text-slate-700">Guru</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(schedules || []).map(s => (<tr key={s.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={s.id}/><td className="p-4 font-bold text-slate-800">{s.day}</td><td className="p-4 font-bold text-indigo-600">{s.jamKe || '-'}</td><td className="p-4 text-slate-500 font-mono">{s.time}</td><td className="p-4"><span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-bold">{s.class}</span></td><td className="p-4 text-slate-800">{s.subject}</td><td className="p-4 text-slate-600">{s.teacherName}</td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>))}
+                        </tbody></table>
+                    )}
+                    {tab === 'kalender' && (
+                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><HeaderCheckbox items={calendarEvents} /><th className="p-4 font-bold text-slate-700">Tanggal Pelaksanaan</th><th className="p-4 font-bold text-slate-700">Nama Agenda / Kegiatan</th><th className="p-4 font-bold text-slate-700">Jenis</th><th className="p-4 text-right font-bold text-slate-700">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">
+                            {(calendarEvents || []).sort((a,b) => new Date(a.date) - new Date(b.date)).map(s => (
+                                <tr key={s.id} className="hover:bg-slate-50 transition-colors"><CheckboxCell id={s.id}/><td className="p-4 font-mono text-slate-500 font-bold">{new Date(s.date).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric'})} {s.endDate ? ` - ${new Date(s.endDate).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric'})}` : ''}</td><td className="p-4 font-bold text-slate-800">{s.name}</td><td className="p-4"><span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${s.type === 'Libur' ? 'bg-red-50 text-red-600 border-red-200' : s.type === 'Ujian' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{s.type}</span></td><td className="p-4 text-right"><div className="flex justify-end gap-1"><button onClick={()=> handleEditClick(s)} className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Edit size={16}/></button><button onClick={()=> handleDeleteSingle(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></div></td></tr>
+                            ))}
+                            {(!calendarEvents || calendarEvents.length === 0) && <tr><td colSpan="5" className="p-8 text-center text-slate-400">Belum ada agenda yang ditambahkan. Klik Tambah Manual.</td></tr>}
                         </tbody></table>
                     )}
                 </div>
 
                 {tab === 'sekolah' && (
-                    <div className="max-w-2xl bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <div className="max-w-4xl bg-slate-50 p-6 rounded-2xl border border-slate-200">
                         <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200">
                             <div className="w-24 h-24 rounded-xl border-4 border-white shadow-md overflow-hidden bg-white shrink-0">
                                 {localSchoolConfig?.logo ? <img src={localSchoolConfig.logo} alt="Logo Sekolah" className="w-full h-full object-cover" onError={(e) => {e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=No+Logo'}} /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">Logo</div>}
                             </div>
                             <div className="flex-1">
                                 <label className="block text-sm font-bold text-slate-700 mb-1">URL Logo Sekolah</label>
-                                <input type="text" value={localSchoolConfig.logo || ''} onChange={e => setLocalSchoolConfig({...localSchoolConfig, logo: e.target.value})} placeholder="https://..." className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none text-sm" />
+                                <input type="text" value={localSchoolConfig.logo || ''} onChange={e => setLocalSchoolConfig({...localSchoolConfig, logo: e.target.value})} placeholder="https://..." className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none text-sm bg-white" />
                                 <p className="text-xs text-slate-500 mt-1">Logo ini akan otomatis digunakan di halaman Login setelah disimpan.</p>
                             </div>
                         </div>
                         <div className="space-y-5">
-                            <div><label className="block text-sm font-bold text-slate-700 mb-1">Nama Sekolah</label><input value={localSchoolConfig.name || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, name: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-1">Alamat Lengkap</label><textarea value={localSchoolConfig.address || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, address: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" rows="2" placeholder="Cth: Jl. Pendidikan No. 1..." /></div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><label className="block text-sm font-bold text-slate-700 mb-1">NPSN</label><input value={localSchoolConfig.npsn || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, npsn: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
-                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Tahun Ajaran</label><input value={localSchoolConfig.academicYear || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, academicYear: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" /></div>
-                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Email Sekolah</label><input type="email" value={localSchoolConfig.email || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, email: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" placeholder="info@sekolah.sch.id" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-1">Nama Sekolah</label><input value={localSchoolConfig.name || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, name: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-1">Alamat Lengkap</label><textarea value={localSchoolConfig.address || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, address: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white" rows="2" placeholder="Cth: Jl. Pendidikan No. 1..." /></div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div><label className="block text-sm font-bold text-slate-700 mb-1">NPSN</label><input value={localSchoolConfig.npsn || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, npsn: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white" /></div>
+                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Tahun Ajaran</label><input value={localSchoolConfig.academicYear || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, academicYear: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white" /></div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Semester Aktif</label>
+                                    <select value={localSchoolConfig.semester || 'Gasal'} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, semester: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white">
+                                        <option value="Gasal">Gasal</option>
+                                        <option value="Genap">Genap</option>
+                                    </select>
+                                </div>
+                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Email Sekolah</label><input type="email" value={localSchoolConfig.email || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, email: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none bg-white" placeholder="info@sekolah.sch.id" /></div>
+                            </div>
+                            
+                            <div className="pt-4 border-t border-slate-200 mt-6">
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText size={18}/> Pengaturan Dokumen Kebutuhan KBM Guru</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-100 p-4 rounded-xl border border-slate-200">
+                                    <div><label className="block text-xs font-bold text-slate-700 mb-1">Link SK KBM</label><input type="text" value={localSchoolDocs.sk_kbm || ''} onChange={e=>setLocalSchoolDocs({...localSchoolDocs, sk_kbm: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none text-sm bg-white" placeholder="https://drive.google.com/file/d/.../view" /></div>
+                                    <div><label className="block text-xs font-bold text-slate-700 mb-1">Link Kalender Pendidikan & RPE</label><input type="text" value={localSchoolDocs.kalender_rpe || ''} onChange={e=>setLocalSchoolDocs({...localSchoolDocs, kalender_rpe: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none text-sm bg-white" placeholder="https://drive.google.com/file/d/.../view" /></div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-200 mt-6">
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><LinkIcon size={18}/> Pengaturan Link Drive Perangkat Ujian</h4>
+                                
+                                <div className="space-y-6">
+                                    <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                        <h5 className="font-bold text-slate-700 mb-3 text-sm border-b border-slate-100 pb-2">STS (Sumatif Tengah Semester)</h5>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman (GASAL)</label><input value={localSchoolConfig.link_kisi_sts_gasal || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_sts_gasal: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman (GENAP)</label><input value={localSchoolConfig.link_kisi_sts_genap || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_sts_genap: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal / Praktik (GASAL)</label><input value={localSchoolConfig.link_soal_sts_gasal || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_sts_gasal: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal / Praktik (GENAP)</label><input value={localSchoolConfig.link_soal_sts_genap || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_sts_genap: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                        <h5 className="font-bold text-slate-700 mb-3 text-sm border-b border-slate-100 pb-2">SAS & SAT (Sumatif Akhir)</h5>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman SAS (GASAL)</label><input value={localSchoolConfig.link_kisi_sas || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_sas: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman SAT (GENAP)</label><input value={localSchoolConfig.link_kisi_sat || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_sat: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal SAS (GASAL)</label><input value={localSchoolConfig.link_soal_sas || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_sas: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal SAT (GENAP)</label><input value={localSchoolConfig.link_soal_sat || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_sat: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                        <h5 className="font-bold text-slate-700 mb-3 text-sm border-b border-slate-100 pb-2">PSAJ (Penilaian Sumatif Akhir Jenjang)</h5>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman (PRAKTIK)</label><input value={localSchoolConfig.link_kisi_psaj_praktik || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_psaj_praktik: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Kisi & Pedoman (TULIS)</label><input value={localSchoolConfig.link_kisi_psaj_tulis || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_kisi_psaj_tulis: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal / Kegiatan (PRAKTIK)</label><input value={localSchoolConfig.link_soal_psaj_praktik || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_psaj_praktik: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                            <div><label className="block text-xs font-bold text-slate-600 mb-1">Soal / Kegiatan (TULIS)</label><input value={localSchoolConfig.link_soal_psaj_tulis || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, link_soal_psaj_tulis: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-indigo-500" placeholder="https://drive..." /></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div className="pt-4 flex justify-end">
                                 <button onClick={handleSaveSchoolConfig} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 flex items-center gap-2 transition-all transform hover:-translate-y-1">
@@ -1536,7 +1989,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                 )}
 
                 {tab === 'backup' && (
-                    <div className="max-w-2xl bg-slate-50 p-6 rounded-2xl border border-slate-200 animate-fade-in">
+                    <div className="max-w-2xl bg-slate-50 p-6 rounded-2xl border border-slate-100 animate-fade-in">
                         <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200">
                             <div className="w-16 h-16 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
                                 <Database size={32} />
@@ -1609,7 +2062,6 @@ export default function App() {
         };
     }, []);
 
-    // Load semua state Firebase dan ambil status loading (l1, l2, dst)
     const [teachers, setTeachers, l1] = useFirebaseData('teachers', INITIAL_TEACHERS, fbUser);
     const [students, setStudents, l2] = useFirebaseData('students', INITIAL_STUDENTS, fbUser);
     const [classes, setClasses, l3] = useFirebaseData('classes', INITIAL_CLASSES, fbUser);
@@ -1623,14 +2075,14 @@ export default function App() {
     const [teacherDriveLinks, setTeacherDriveLinks, l11] = useFirebaseData('teacherDriveLinks', INITIAL_DRIVE_LINKS, fbUser);
     const [schoolConfig, setSchoolConfig, l12] = useFirebaseData('schoolConfig', INITIAL_SCHOOL_CONFIG, fbUser);
     const [schoolDocs, setSchoolDocs, l13] = useFirebaseData('schoolDocs', INITIAL_SCHOOL_DOCS, fbUser);
+    const [perangkatLogs, setPerangkatLogs, l14] = useFirebaseData('perangkatLogs', [], fbUser);
+    const [calendarEvents, setCalendarEvents, l15] = useFirebaseData('calendarEvents', [], fbUser);
 
-    // Kunci aplikasi jika ada satu saja data yang belum selesai dimuat dari Firebase
-    const isDataLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13;
+    const isDataLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
 
     const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
     const showConfirm = (message, onConfirm) => { setConfirm({ message, onConfirm: () => { onConfirm(); setConfirm(null); }, onCancel: () => setConfirm(null) }); };
 
-    // Tampilkan Loading Screen Murni jika Firebase belum siap
     if (isDataLoading) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 selection:bg-indigo-100 selection:text-indigo-700">
@@ -1650,16 +2102,22 @@ export default function App() {
     const isManagement = user?.role === 'admin' || user?.role === 'kepala_sekolah' || currentTeacher?.status?.includes('Kepala Sekolah') || currentTeacher?.status?.includes('Wakil Kepala Sekolah');
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden font-sans selection:bg-indigo-100 selection:text-indigo-700">
+        <div className="flex h-[100dvh] bg-slate-50 overflow-hidden font-sans selection:bg-indigo-100 selection:text-indigo-700">
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={user} onLogout={() => setUser(null)} isPiket={isPiket} isManagement={isManagement} isWaliKelas={isWaliKelas} schoolConfig={schoolConfig || {}} />
             
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                <header className="h-20 glass-header border-b border-slate-200 flex items-center justify-between px-6 z-30 sticky top-0 bg-white/90 backdrop-blur-md">
+                <header className="h-20 glass-header border-b border-slate-100 flex items-center justify-between px-6 z-30 sticky top-0 bg-white/90 backdrop-blur-md">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-slate-500 hover:text-slate-800"><Menu size={24} /></button>
                         <div>
                             <h1 className="text-xl font-bold text-slate-800 hidden md:block">{schoolConfig?.name || 'SIJAGA'}</h1>
-                            <div className="text-xs text-slate-500 hidden md:flex gap-2"><span>NPSN: {schoolConfig?.npsn || '-'}</span><span>•</span><span className="text-indigo-600">{schoolConfig?.academicYear || '-'} ({schoolConfig?.semester || '-'})</span></div>
+                            <div className="text-[10px] text-slate-500 hidden md:flex items-center gap-2 mt-0.5">
+                                <span className="font-semibold text-indigo-600">Sistem Jurnal & Administrasi Guru Mengajar</span>
+                                <span>•</span>
+                                <span>NPSN: {schoolConfig?.npsn || '-'}</span>
+                                <span>•</span>
+                                <span>{schoolConfig?.academicYear || '-'} ({schoolConfig?.semester || '-'})</span>
+                            </div>
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md cursor-default" title={user.name}>{user.name.charAt(0).toUpperCase()}</div>
@@ -1667,16 +2125,18 @@ export default function App() {
                 
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar bg-slate-50/50">
                     {activeTab === 'dashboard' && <Dashboard user={user} teachersCount={(teachers || []).length} studentsCount={(students || []).length} setActiveTab={setActiveTab} classLogs={classLogs || []} setClassLogs={setClassLogs} teacherAttendance={teacherAttendance || []} schedules={schedules || []} jurnals={jurnals || []} showToast={showToast} isManagement={isManagement} />}
+                    {activeTab === 'kalender-akademik' && <KalenderAkademik calendarEvents={calendarEvents || []} schoolConfig={schoolConfig || {}} />}
                     {activeTab === 'absensi-guru' && <AbsensiGuru user={user} teacherAttendance={teacherAttendance || []} setTeacherAttendance={setTeacherAttendance} classLogs={classLogs || []} setClassLogs={setClassLogs} schedules={schedules || []} showToast={showToast} />}
                     {activeTab === 'jurnal' && <JurnalMengajar user={user} schedules={schedules || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} setJurnals={setJurnals} showToast={showToast} schoolConfig={schoolConfig || {}} teachers={teachers || []} />}
                     {activeTab === 'drive-guru' && <DriveAdministrasiGuru teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} user={user} showToast={showToast} />}
+                    {activeTab === 'perangkat-ujian' && <PerangkatUjian schoolConfig={schoolConfig || {}} teacherDriveLinks={teacherDriveLinks || {}} user={user} showToast={showToast} perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} />}
+                    {activeTab === 'kebutuhan-kbm' && <KebutuhanKBMGuru schoolDocs={schoolDocs || {}} />}
                     {activeTab === 'presensi' && <PresensiSiswa students={students || []} attendance={attendance || {}} setAttendance={setAttendance} showToast={showToast} user={user} schedules={schedules || []} classes={classes || []} />}
                     {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
-                    {activeTab === 'sk-kbm' && <DokumenView title="SK Pembagian Tugas (KBM)" type="sk_kbm" schoolDocs={schoolDocs || {}} />}
-                    {activeTab === 'pekan-efektif' && <DokumenView title="Perhitungan Pekan Efektif" type="pekan_efektif" schoolDocs={schoolDocs || {}} />}
                     {activeTab === 'monitoring' && <MonitoringGuru teacherAttendance={teacherAttendance || []} classLogs={classLogs || []} schedules={schedules || []} jurnals={jurnals || []} teachers={teachers || []} />}
+                    {activeTab === 'monitoring-perangkat' && <MonitoringPerangkat perangkatLogs={perangkatLogs || []} />}
                     {activeTab === 'analisis-siswa' && <AnalisisSiswa classes={classes || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} schedules={schedules || []} user={user} isWaliKelas={isWaliKelas} managedClass={managedClass} isManagement={isManagement} />}
-                    {activeTab === 'data' && <ManajemenData teachers={teachers || []} setTeachers={setTeachers} students={students || []} setStudents={setStudents} classes={classes || []} setClasses={setClasses} subjects={subjects || []} setSubjects={setSubjects} schedules={schedules || []} setSchedules={setSchedules} showConfirm={showConfirm} showToast={showToast} teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} schoolConfig={schoolConfig || {}} setSchoolConfig={setSchoolConfig} schoolDocs={schoolDocs || {}} setSchoolDocs={setSchoolDocs} jurnals={jurnals || []} setJurnals={setJurnals} teacherAttendance={teacherAttendance || []} setTeacherAttendance={setTeacherAttendance} classLogs={classLogs || []} setClassLogs={setClassLogs} accounts={accounts || []} setAccounts={setAccounts} attendance={attendance || {}} setAttendance={setAttendance} />}
+                    {activeTab === 'data' && <ManajemenData teachers={teachers || []} setTeachers={setTeachers} students={students || []} setStudents={setStudents} classes={classes || []} setClasses={setClasses} subjects={subjects || []} setSubjects={setSubjects} schedules={schedules || []} setSchedules={setSchedules} showConfirm={showConfirm} showToast={showToast} teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} schoolConfig={schoolConfig || {}} setSchoolConfig={setSchoolConfig} schoolDocs={schoolDocs || {}} setSchoolDocs={setSchoolDocs} jurnals={jurnals || []} setJurnals={setJurnals} teacherAttendance={teacherAttendance || []} setTeacherAttendance={setTeacherAttendance} classLogs={classLogs || []} setClassLogs={setClassLogs} accounts={accounts || []} setAccounts={setAccounts} attendance={attendance || {}} setAttendance={setAttendance} calendarEvents={calendarEvents || []} setCalendarEvents={setCalendarEvents} />}
                     {activeTab === 'generate-akun' && <GenerateAkun teachers={teachers || []} accounts={accounts || []} setAccounts={setAccounts} showToast={showToast} />}
                     {activeTab === 'jadwal' && <JadwalGuru user={user} schedules={schedules || []} />}
                 </main>
