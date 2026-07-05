@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -191,6 +191,104 @@ const JurnalKokurikuler = ({ showToast }) => (
     </div>
 );
 
+// --- KOMPONEN LANDING PAGE (WEBSITE VIEW) ---
+const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
+    return (
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-700 flex flex-col animate-fade-in">
+            {/* Navbar */}
+            <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 rounded-xl flex items-center justify-center shadow-inner overflow-hidden shrink-0 border border-indigo-100">
+                            {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover p-1" /> : <School size={24} className="text-indigo-600" />}
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-lg md:text-xl text-slate-800 leading-tight tracking-tight">{schoolConfig?.name || 'SIJAGA Portal'}</span>
+                            <span className="text-[10px] md:text-xs text-slate-500 font-medium leading-none mt-0.5">NPSN: {schoolConfig?.npsn || '-'}</span>
+                        </div>
+                    </div>
+                    <button onClick={onNavigateLogin} className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 transform hover:-translate-y-0.5">
+                        <LogIn size={16} /> <span className="hidden sm:inline">Masuk Portal</span><span className="sm:hidden">Masuk</span>
+                    </button>
+                </div>
+            </header>
+
+            {/* Hero Section */}
+            <main className="flex-1 flex flex-col">
+                <section className="relative pt-20 pb-32 flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex-1">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                        <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-indigo-200/40 blur-3xl"></div>
+                        <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-200/40 blur-3xl"></div>
+                    </div>
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center animate-fade-in-down">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-indigo-700 text-xs font-bold mb-8 border border-indigo-100 shadow-sm uppercase tracking-wider">
+                            <Activity size={14} className="text-indigo-500"/> Transformasi Digital Sekolah
+                        </div>
+                        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+                            Sistem Jurnal & Administrasi <br className="hidden md:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Guru Mengajar (SIJAGA)</span>
+                        </h1>
+                        <p className="mt-4 text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                            Platform terpadu untuk {schoolConfig?.name || 'sekolah Anda'} yang memudahkan pemantauan kelas, pengisian presensi siswa, dan kelengkapan administrasi guru secara real-time.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button onClick={onNavigateLogin} className="px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg transform hover:-translate-y-1">
+                                <School size={20} /> Mulai Gunakan SIJAGA
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Features Section */}
+                <section className="py-20 bg-white relative z-10 border-t border-slate-100">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Fitur Utama Platform</h2>
+                            <p className="text-slate-500 mt-3 text-lg">Mendukung kegiatan belajar mengajar yang lebih terstruktur dan efisien.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {[
+                                { title: 'Jurnal Mengajar Terintegrasi', desc: 'Isi tujuan, kegiatan, dan refleksi pembelajaran secara langsung di dalam kelas tanpa kertas.', icon: Book },
+                                { title: 'Presensi Siswa Cepat', desc: 'Pantau ketidakhadiran siswa langsung saat kegiatan KBM berlangsung untuk lapor ke manajemen.', icon: UserCheck },
+                                { title: 'Monitoring Kepala Sekolah', desc: 'Pihak manajemen sekolah dapat memantau aktivitas mengajar guru secara komprehensif.', icon: Activity }
+                            ].map((f, i) => (
+                                <div key={i} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all text-center group">
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                                        <f.icon size={32} className="text-indigo-600" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-3">{f.title}</h3>
+                                    <p className="text-slate-600 leading-relaxed">{f.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-sm mt-auto">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden p-1 shadow-inner">
+                            {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> : <School size={24} className="text-slate-400" />}
+                        </div>
+                        <div>
+                            <p className="font-bold text-white text-base tracking-wide">{schoolConfig?.name || 'Nama Sekolah'}</p>
+                            <p className="mt-0.5">{schoolConfig?.academicYear || 'Tahun Ajaran'} • Semester {schoolConfig?.semester || 'Gasal'}</p>
+                        </div>
+                    </div>
+                    <div className="text-center md:text-right">
+                        <p className="mb-1.5 flex items-center justify-center md:justify-end gap-2 text-slate-300"><MapPin size={16} className="text-indigo-400" /> {schoolConfig?.address || 'Alamat Sekolah Belum Diatur'}</p>
+                        <p>Email: {schoolConfig?.email || '-'} <span className="mx-2 hidden sm:inline">•</span><br className="sm:hidden"/> NPSN: {schoolConfig?.npsn || '-'}</p>
+                    </div>
+                </div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 text-center pt-8 border-t border-slate-800 text-xs">
+                    &copy; {new Date().getFullYear()} SIJAGA - Sistem Jurnal & Administrasi Guru Mengajar. Didesain untuk pendidikan Indonesia.
+                </div>
+            </footer>
+        </div>
+    );
+};
+
 // --- KOMPONEN KEBUTUHAN KBM GURU ---
 const KebutuhanKBMGuru = ({ schoolDocs }) => {
     const [popupLink, setPopupLink] = useState(null);
@@ -208,7 +306,7 @@ const KebutuhanKBMGuru = ({ schoolDocs }) => {
             {popupLink && (
                 <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col animate-fade-in-down overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
+                        <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><FileText size={20} className="text-indigo-600" /> Pratinjau Dokumen</h3>
                             <div className="flex items-center gap-3">
                                 <a href={popupLink} target="_blank" rel="noreferrer" className="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"><LinkIcon size={16}/> Buka di Tab Baru</a>
@@ -231,13 +329,13 @@ const KebutuhanKBMGuru = ({ schoolDocs }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-indigo-300">
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-indigo-300">
                     <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4"><FileText size={32} /></div>
                     <h3 className="font-bold text-slate-800 text-lg mb-2">SK Pembagian Tugas (KBM)</h3>
                     <p className="text-sm text-slate-500 mb-6 px-4">Dokumen resmi pembagian jam mengajar dan tugas tambahan guru.</p>
                     <button onClick={() => schoolDocs?.sk_kbm ? setPopupLink(schoolDocs.sk_kbm) : alert('Link SK KBM belum diatur oleh Admin.')} className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${schoolDocs?.sk_kbm ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}><Eye size={18} /> Tampilkan Dokumen</button>
                 </div>
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-emerald-300">
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-emerald-300">
                     <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4"><Calendar size={32} /></div>
                     <h3 className="font-bold text-slate-800 text-lg mb-2">Kalender Pendidikan & RPE</h3>
                     <p className="text-sm text-slate-500 mb-6 px-4">Rincian Pekan Efektif dan kalender akademik kegiatan sekolah.</p>
@@ -249,7 +347,7 @@ const KebutuhanKBMGuru = ({ schoolDocs }) => {
 };
 
 // --- LAYAR LOGIN ---
-const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig }) => {
+const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig, onBack }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -272,15 +370,20 @@ const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 font-sans selection:bg-indigo-100 selection:text-indigo-700">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300 mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 font-sans selection:bg-indigo-100 selection:text-indigo-700 relative">
+            <button onClick={onBack} className="absolute top-4 left-4 md:top-6 md:left-6 text-white/80 hover:text-white flex items-center gap-2 text-sm font-bold transition-colors z-20 bg-black/10 hover:bg-black/30 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
+                <ArrowLeft size={16} /> Kembali
+            </button>
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300 mx-auto z-10 relative mt-12 md:mt-0">
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 md:p-10 text-center relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-20 transform -skew-y-6 scale-150 origin-bottom-left"></div>
-                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner relative z-10 overflow-hidden">
-                        {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> : <School size={40} className="text-white drop-shadow-md" />}
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner relative z-10 overflow-hidden p-1">
+                        {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover rounded-xl" /> : <School size={40} className="text-white drop-shadow-md" />}
                     </div>
                     <h1 className="text-2xl md:text-3xl font-bold text-white relative z-10 tracking-tight">{schoolConfig?.name || 'SIJAGA'}</h1>
-                    <p className="text-indigo-100 text-[10px] md:text-xs mt-1 relative z-10 font-medium opacity-90">(Sistem Jurnal dan Administrasi Guru Mengajar)</p>
+                    <p className="text-indigo-100 text-[10px] md:text-xs mt-1.5 relative z-10 font-medium opacity-90 leading-tight uppercase tracking-wider">
+                        Sistem Jurnal & Administrasi<br/>Guru Mengajar
+                    </p>
                 </div>
                 
                 <div className="p-6 md:p-8 pt-8 md:pt-10">
@@ -330,7 +433,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
         <>
             <div className={`fixed inset-0 bg-slate-900/50 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsOpen(false)}></div>
             <div className={`fixed md:relative inset-y-0 left-0 z-50 bg-slate-900 text-white sidebar-transition flex flex-col shadow-2xl md:shadow-none transition-all duration-300 ease-in-out h-[100dvh] md:h-auto ${isOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'} md:w-20 hover:md:w-64`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-                <div className="flex flex-col justify-center h-20 px-6 bg-slate-950 border-b border-slate-800 shrink-0">
+                <div className="flex flex-col justify-center h-24 px-6 bg-slate-950 border-b border-slate-800 shrink-0">
                     <div className="flex items-center gap-3 font-bold text-xl tracking-tight text-white">
                         <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                             {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> : <School size={20} className="text-indigo-600" />}
@@ -514,6 +617,7 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
 
 const KalenderAkademik = ({ calendarEvents, schoolConfig }) => {
     const sortedEvents = (calendarEvents || []).sort((a,b) => new Date(a.date) - new Date(b.date));
+    
     const pekanGasal = schoolConfig?.pekan_efektif_gasal || '0';
     const pekanGenap = schoolConfig?.pekan_efektif_genap || '0';
     
@@ -2029,6 +2133,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
 export default function App() {
     const [fbUser, setFbUser] = useState(null);
     const [user, setUser] = useState(null);
+    const [showLogin, setShowLogin] = useState(false);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [toast, setToast] = useState(null);
@@ -2093,7 +2198,13 @@ export default function App() {
         );
     }
 
-    if (!user) return <><LoginScreen onLogin={setUser} accounts={accounts || []} showToast={showToast} schoolConfig={schoolConfig || {}} /><ToastContainer toast={toast} /></>;
+    if (!user) {
+        if (!showLogin) {
+            return <><LandingPage schoolConfig={schoolConfig || {}} onNavigateLogin={() => setShowLogin(true)} /><ToastContainer toast={toast} /></>;
+        } else {
+            return <><LoginScreen onLogin={setUser} accounts={accounts || []} showToast={showToast} schoolConfig={schoolConfig || {}} onBack={() => setShowLogin(false)} /><ToastContainer toast={toast} /></>;
+        }
+    }
 
     const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name) : null; 
     const isPiket = currentTeacher?.status?.includes('Guru Piket');
