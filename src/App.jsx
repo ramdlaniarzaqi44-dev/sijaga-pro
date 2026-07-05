@@ -195,7 +195,6 @@ const JurnalKokurikuler = ({ showToast }) => (
 const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
     return (
         <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-700 flex flex-col animate-fade-in">
-            {/* Navbar */}
             <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -213,7 +212,6 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
                 </div>
             </header>
 
-            {/* Hero Section */}
             <main className="flex-1 flex flex-col">
                 <section className="relative pt-20 pb-32 flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex-1">
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
@@ -238,7 +236,6 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
                     </div>
                 </section>
 
-                {/* Features Section */}
                 <section className="py-20 bg-white relative z-10 border-t border-slate-100">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-16">
@@ -264,7 +261,6 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
                 </section>
             </main>
 
-            {/* Footer */}
             <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-sm mt-auto">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-4">
@@ -997,7 +993,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
     };
 
     const isFormValid = useMemo(() => {
-        return form.tujuan.trim() !== '' && form.kegiatan.trim() !== '' && form.refleksi.trim() !== '' && form.catatan.trim() !== '';
+        return (form.tujuan || '').trim() !== '' && (form.kegiatan || '').trim() !== '' && (form.refleksi || '').trim() !== '' && (form.catatan || '').trim() !== '';
     }, [form]);
 
     return (
@@ -1005,13 +1001,21 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
             {!selectedSchedule ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(schedules || []).filter(s => s.day === activeDay).map(item => {
+                    {(schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).map(item => {
                         const existingJournal = (jurnals || []).find(j => j.scheduleId === item.id && j.date === dateStr);
                         const isFilled = !!existingJournal;
                         return (
                             <div key={item.id} onClick={() => { 
                                 setSelectedSchedule(item); 
-                                if(isFilled) { setForm({ tujuan: existingJournal.tujuan, kegiatan: existingJournal.kegiatan, refleksi: existingJournal.refleksi, catatan: existingJournal.catatan }); showToast("Memuat jurnal untuk diedit."); }
+                                if(isFilled) { 
+                                    setForm({ 
+                                        tujuan: existingJournal.tujuan || '', 
+                                        kegiatan: existingJournal.kegiatan || '', 
+                                        refleksi: existingJournal.refleksi || '', 
+                                        catatan: existingJournal.catatan || '' 
+                                    }); 
+                                    showToast("Memuat jurnal untuk diedit."); 
+                                }
                                 else { setForm({tujuan:'', kegiatan:'', refleksi:'', catatan:''}); }
                             }} className={`bg-white p-6 rounded-xl border cursor-pointer hover:shadow-md transition-all ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'}`}>
                                 <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg ${isFilled?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-600'}`}>Jam {item.jamKe || '-'} ({item.time})</span><span className={`text-xs ${isFilled?'text-emerald-600 font-bold':'text-slate-400'}`}>{isFilled?'Sudah Diisi (Klik untuk Edit)':'Klik untuk isi'}</span></div>
@@ -1019,7 +1023,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                             </div>
                         )
                     })}
-                    {(schedules || []).filter(s => s.day === activeDay).length === 0 && (
+                    {(schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).length === 0 && (
                         <div className="col-span-full p-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                             Anda tidak memiliki jadwal mengajar pada hari ini. Form jurnal tidak tersedia.
                         </div>
