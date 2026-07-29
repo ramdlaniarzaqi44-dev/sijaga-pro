@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft, Shield, HeartHandshake, ExternalLink } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -286,7 +286,7 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
 };
 
 // --- KOMPONEN KEBUTUHAN KBM GURU ---
-const KebutuhanKBMGuru = ({ schoolDocs }) => {
+const KebutuhanKBMGuru = ({ schoolDocs, isPiket }) => {
     const [popupLink, setPopupLink] = useState(null);
 
     const getEmbedLink = (link) => {
@@ -320,7 +320,7 @@ const KebutuhanKBMGuru = ({ schoolDocs }) => {
                 <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl"><BookOpen size={32} /></div>
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">Kebutuhan KBM Guru</h2>
-                    <p className="text-slate-500 text-sm">Akses cepat ke dokumen SK Pembagian Tugas Mengajar dan Kalender Pendidikan.</p>
+                    <p className="text-slate-500 text-sm">Akses cepat ke dokumen SK Pembagian Tugas Mengajar, Kalender Pendidikan, dan Layanan Terintegrasi lainnya.</p>
                 </div>
             </div>
 
@@ -337,6 +337,43 @@ const KebutuhanKBMGuru = ({ schoolDocs }) => {
                     <p className="text-sm text-slate-500 mb-6 px-4">Rincian Pekan Efektif dan kalender akademik kegiatan sekolah.</p>
                     <button onClick={() => schoolDocs?.kalender_rpe ? setPopupLink(schoolDocs.kalender_rpe) : alert('Link Kalender Pendidikan belum diatur oleh Admin.')} className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${schoolDocs?.kalender_rpe ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}><Eye size={18} /> Tampilkan Dokumen</button>
                 </div>
+            </div>
+
+            <div className="mt-8 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+                <LinkIcon size={20} className="text-indigo-600" />
+                <h3 className="font-bold text-xl text-slate-800">Aplikasi & Layanan Terintegrasi</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-blue-300 cursor-pointer group" onClick={() => window.open('https://sipinter-delta.vercel.app/', '_blank')}>
+                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Clock size={28} /></div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-1">SIPINTAR</h3>
+                    <p className="text-xs text-slate-500 mb-4">Layanan Perizinan Terpadu</p>
+                    <span className="text-blue-600 text-sm font-bold flex items-center gap-1"><ExternalLink size={14}/> Buka Aplikasi</span>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-emerald-300 cursor-pointer group" onClick={() => window.open('https://www.appsheet.com/start/609388dc-cb8e-41f2-886b-da249b87f594?platform=desktop', '_blank')}>
+                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Database size={28} /></div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-1">SIMALA</h3>
+                    <p className="text-xs text-slate-500 mb-4">Manajemen Laboratorium & Aset</p>
+                    <span className="text-emerald-600 text-sm font-bold flex items-center gap-1"><ExternalLink size={14}/> Buka Aplikasi</span>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-pink-300 cursor-pointer group" onClick={() => window.open('https://sibk.vercel.app/', '_blank')}>
+                    <div className="w-14 h-14 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><HeartHandshake size={28} /></div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-1">SIBK</h3>
+                    <p className="text-xs text-slate-500 mb-4">Sistem Bimbingan Konseling</p>
+                    <span className="text-pink-600 text-sm font-bold flex items-center gap-1"><ExternalLink size={14}/> Buka Aplikasi</span>
+                </div>
+
+                {isPiket && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.web.app/', '_blank')}>
+                        <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield size={28} /></div>
+                        <h3 className="font-bold text-slate-800 text-lg mb-1">SIGAP (Piket)</h3>
+                        <p className="text-xs text-slate-500 mb-4">Jurnal & Laporan Guru Piket</p>
+                        <span className="text-orange-600 text-sm font-bold flex items-center gap-1"><ExternalLink size={14}/> Buka Aplikasi</span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -2245,7 +2282,7 @@ export default function App() {
                     {activeTab === 'jurnal' && <JurnalMengajar user={user} schedules={schedules || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} setJurnals={setJurnals} showToast={showToast} schoolConfig={schoolConfig || {}} teachers={teachers || []} />}
                     {activeTab === 'drive-guru' && <DriveAdministrasiGuru teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} user={user} showToast={showToast} />}
                     {activeTab === 'perangkat-ujian' && <PerangkatUjian schoolConfig={schoolConfig || {}} teacherDriveLinks={teacherDriveLinks || {}} user={user} showToast={showToast} perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} />}
-                    {activeTab === 'kebutuhan-kbm' && <KebutuhanKBMGuru schoolDocs={schoolDocs || {}} />}
+                    {activeTab === 'kebutuhan-kbm' && <KebutuhanKBMGuru schoolDocs={schoolDocs || {}} isPiket={isPiket} />}
                     {activeTab === 'presensi' && <PresensiSiswa students={students || []} attendance={attendance || {}} setAttendance={setAttendance} showToast={showToast} user={user} schedules={schedules || []} classes={classes || []} />}
                     {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
                     {activeTab === 'monitoring' && <MonitoringGuru teacherAttendance={teacherAttendance || []} classLogs={classLogs || []} schedules={schedules || []} jurnals={jurnals || []} teachers={teachers || []} />}
