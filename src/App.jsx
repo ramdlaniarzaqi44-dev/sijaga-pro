@@ -367,7 +367,7 @@ const KebutuhanKBMGuru = ({ schoolDocs, isPiket }) => {
                 </div>
 
                 {isPiket && (
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.web.app/', '_blank')}>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.vercel.app/', '_blank')}>
                         <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield size={28} /></div>
                         <h3 className="font-bold text-slate-800 text-lg mb-1">SIGAP (Piket)</h3>
                         <p className="text-xs text-slate-500 mb-4">Jurnal & Laporan Guru Piket</p>
@@ -497,7 +497,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
                                             if (item.id === 'asesmen') {
                                                 window.open('https://erapor-zeta.vercel.app/', '_blank');
                                             } else if (item.id === 'jurnal-piket') {
-                                                window.open('https://sigapaltaz.web.app/', '_blank');
+                                                window.open('https://sigapaltaz.vercel.app/', '_blank');
                                             } else {
                                                 setActiveTab(item.id); 
                                                 setIsOpen(false); 
