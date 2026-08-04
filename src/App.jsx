@@ -61,6 +61,12 @@ const INITIAL_SCHOOL_CONFIG = {
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
+const isSameClass = (classA, classB) => {
+    if (!classA || !classB) return false;
+    const norm = (c) => c.toString().toLowerCase().replace(/^kelas\s+/i, '').trim();
+    return norm(classA) === norm(classB);
+};
+
 // --- FUNGSI PENGHITUNG WAKTU OTOMATIS ---
 const calculateJamTime = (jamKeString) => {
     if (!jamKeString) return '';
@@ -367,7 +373,7 @@ const KebutuhanKBMGuru = ({ schoolDocs, isPiket }) => {
                 </div>
 
                 {isPiket && (
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.vercel.app/', '_blank')}>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.web.app/', '_blank')}>
                         <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield size={28} /></div>
                         <h3 className="font-bold text-slate-800 text-lg mb-1">SIGAP (Piket)</h3>
                         <p className="text-xs text-slate-500 mb-4">Jurnal & Laporan Guru Piket</p>
@@ -497,7 +503,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
                                             if (item.id === 'asesmen') {
                                                 window.open('https://erapor-zeta.vercel.app/', '_blank');
                                             } else if (item.id === 'jurnal-piket') {
-                                                window.open('https://sigapaltaz.vercel.app/', '_blank');
+                                                window.open('https://sigapaltaz.web.app/', '_blank');
                                             } else {
                                                 setActiveTab(item.id); 
                                                 setIsOpen(false); 
@@ -900,8 +906,12 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
     const activeDay = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][selectedDate.getDay()];
     const dateStr = selectedDate.toLocaleDateString('id-ID');
 
+    const myHistory = useMemo(() => {
+        return (jurnals || []).filter(j => j.teacherName === user.name).sort((a, b) => b.id - a.id);
+    }, [jurnals, user.name]);
+
     const getAbsentStudents = (className) => {
-        const classStudents = (students || []).filter(s => s.class === className);
+        const classStudents = (students || []).filter(s => isSameClass(s.class, className));
         const absent = classStudents.filter(s => {
             const status = attendance[s.id];
             return status && status !== 'Hadir';
@@ -1095,6 +1105,34 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                     }} className={`px-6 py-3 font-bold rounded-xl flex items-center gap-2 transition-all ${isFormValid ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}><Save size={18}/> Simpan Jurnal</button></div>
                 </div>
             )}
+
+            {}
+            <div className="mt-8 pt-8 border-t border-slate-200 animate-fade-in-down">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Clock size={20} /></div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">Riwayat Jurnal Terisi</h3>
+                        <p className="text-xs text-slate-500">Daftar jurnal yang sudah berhasil disimpan ke database (Firebase).</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {myHistory.length > 0 ? myHistory.map((j) => (
+                        <div key={j.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-3">
+                                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">{j.date}</span>
+                                <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100"><CheckCircle size={12}/> Tersimpan</span>
+                            </div>
+                            <h4 className="font-bold text-slate-800">{j.subject}</h4>
+                            <p className="text-xs text-slate-500 mb-2">Kelas {j.class} • Jam {j.jamKe || '-'}</p>
+                            <p className="text-sm text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">"{j.kegiatan}"</p>
+                        </div>
+                    )) : (
+                        <div className="col-span-full p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            Belum ada riwayat jurnal yang tersimpan.
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
@@ -1377,12 +1415,12 @@ const PresensiSiswa = ({ students, attendance, setAttendance, showToast, user, s
                 {availableClasses.length > 0 ? (
                     <table className="w-full text-left text-sm min-w-[600px]">
                         <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 text-slate-700">Nama Siswa</th><th className="p-4 text-slate-700">Status</th></tr></thead>
-                        <tbody className="divide-y divide-slate-100">{(students || []).filter(s => s.class === selectedClass).map(s => (
+                        <tbody className="divide-y divide-slate-100">{(students || []).filter(s => isSameClass(s.class, selectedClass)).map(s => (
                             <tr key={s.id} className="hover:bg-slate-50 transition-colors"><td className="p-4 font-bold text-slate-800">{s.name} <span className="block text-xs font-normal text-slate-500">{s.class}</span></td><td className="p-4"><div className="flex gap-2">{['Hadir', 'Sakit', 'Izin', 'Alpha'].map(status => (
                                 <button key={status} onClick={() => setAttendance(p => ({...(p || {}), [s.id]: status}))} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${((attendance || {})[s.id] || 'Hadir') === status ? 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>{status}</button>
                             ))}</div></td></tr>
                         ))}
-                        {(students || []).filter(s => s.class === selectedClass).length === 0 && (
+                        {(students || []).filter(s => isSameClass(s.class, selectedClass)).length === 0 && (
                             <tr><td colSpan="2" className="p-8 text-center text-slate-400">Belum ada data siswa di kelas ini.</td></tr>
                         )}
                         </tbody>
@@ -1473,10 +1511,10 @@ const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKel
 
     const analysisData = useMemo(() => {
         if (!selectedClass) return null;
-        const classStudents = (students || []).filter(s => s.class === selectedClass);
+        const classStudents = (students || []).filter(s => isSameClass(s.class, selectedClass));
         const totalStudents = classStudents.length;
         if (totalStudents === 0) return { error: "Belum ada data siswa di kelas ini." };
-        const relevantJournals = (jurnals || []).filter(j => j.class === selectedClass);
+        const relevantJournals = (jurnals || []).filter(j => isSameClass(j.class, selectedClass));
         
         const absenceFrequency = {};
         let totalPossiblePresent = 0;
