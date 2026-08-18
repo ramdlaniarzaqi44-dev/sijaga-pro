@@ -104,7 +104,18 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
         const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
         const unsubscribe = onSnapshot(docRef, (snap) => {
             if (snap.exists()) {
-                setData(snap.data().items || initialValue);
+                let items = snap.data().items || initialValue;
+                // Filter jadwal duplikat sebelum menyimpannya ke state
+                if (docId === 'schedules' && Array.isArray(items)) {
+                    const seen = new Set();
+                    items = items.filter(s => {
+                        const key = `${s.day}-${s.jamKe}-${s.class}-${s.subject}-${s.teacherName}`;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                }
+                setData(items);
             } else {
                 if (!hasLoadedInitial.current) {
                     setData(initialValue);
@@ -130,7 +141,17 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
     const saveData = async (newDataAction) => {
         if (!fbUser) return;
         try {
-            const valueToStore = typeof newDataAction === 'function' ? newDataAction(dataRef.current) : newDataAction;
+            let valueToStore = typeof newDataAction === 'function' ? newDataAction(dataRef.current) : newDataAction;
+            // Filter jadwal duplikat sebelum menyimpannya ke Firebase
+            if (docId === 'schedules' && Array.isArray(valueToStore)) {
+                const seen = new Set();
+                valueToStore = valueToStore.filter(s => {
+                    const key = `${s.day}-${s.jamKe}-${s.class}-${s.subject}-${s.teacherName}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+            }
             setData(valueToStore); 
             const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
             await setDoc(docRef, { items: valueToStore }, { merge: true }); 
