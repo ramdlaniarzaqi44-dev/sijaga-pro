@@ -89,7 +89,7 @@ const calculateJamTime = (jamKeString) => {
 };
 
 // --- HOOK FIREBASE AMAN ---
-const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
+const useFirebaseData = (docId, initialValue, fbUser, onLoaded, collectionScope = 'master_data') => {
     const [data, setData] = useState(initialValue);
     const [loading, setLoading] = useState(true);
     const dataRef = useRef(data);
@@ -101,7 +101,7 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
 
     useEffect(() => {
         if (!fbUser) return;
-        const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
+        const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', collectionScope, docId);
         const unsubscribe = onSnapshot(docRef, (snap) => {
             if (snap.exists()) {
                 let items = snap.data().items || initialValue;
@@ -136,7 +136,7 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
             }
         });
         return () => unsubscribe();
-    }, [fbUser, docId]);
+    }, [fbUser, docId, collectionScope]);
 
     const saveData = async (newDataAction) => {
         if (!fbUser) return;
@@ -153,7 +153,7 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
                 });
             }
             setData(valueToStore); 
-            const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
+            const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', collectionScope, docId);
             await setDoc(docRef, { items: valueToStore }, { merge: true }); 
         } catch (error) {
             console.error("Failed to save:", error);
@@ -1526,8 +1526,10 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
 const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKelas, managedClass, isManagement }) => {
     const [selectedClass, setSelectedClass] = useState('');
     useEffect(() => {
-        if (isWaliKelas && managedClass) setSelectedClass(managedClass);
-        else if ((isManagement || user?.role === 'admin') && (classes || []).length > 0 && !selectedClass) setSelectedClass((classes || [])[0]?.name);
+        if (!selectedClass) {
+            if (isWaliKelas && managedClass) setSelectedClass(managedClass);
+            else if ((isManagement || user?.role === 'admin') && (classes || []).length > 0) setSelectedClass((classes || [])[0]?.name);
+        }
     }, [classes, isWaliKelas, managedClass, isManagement, user, selectedClass]);
 
     const analysisData = useMemo(() => {
@@ -1573,7 +1575,7 @@ const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKel
                     <div><h2 className="text-2xl font-bold text-slate-800">Analisis Siswa & Kelas</h2><p className="text-slate-500 text-sm">Insight otomatis berbasis data jurnal dan kehadiran</p></div>
                 </div>
                 <div className="relative min-w-[200px]">
-                    {isWaliKelas ? (
+                    {isWaliKelas && user?.role !== 'admin' && !isManagement ? (
                         <div className="bg-slate-100 px-4 py-3 rounded-xl font-bold text-slate-700 text-center border border-slate-200">Kelas {selectedClass}</div>
                     ) : (
                         <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold cursor-pointer outline-none">
@@ -2267,21 +2269,29 @@ export default function App() {
         };
     }, []);
 
+    const [schoolConfig, setSchoolConfig, l12] = useFirebaseData('schoolConfig', INITIAL_SCHOOL_CONFIG, fbUser);
+    
+    const currentScope = useMemo(() => {
+        if (!schoolConfig || !schoolConfig.academicYear || !schoolConfig.semester) return 'master_data';
+        const safeYear = schoolConfig.academicYear.replace(/\//g, '-');
+        return `master_data_${safeYear}_${schoolConfig.semester}`;
+    }, [schoolConfig]);
+
+    const [accounts, setAccounts, l9] = useFirebaseData('accounts', INITIAL_ACCOUNTS, fbUser);
     const [teachers, setTeachers, l1] = useFirebaseData('teachers', INITIAL_TEACHERS, fbUser);
     const [students, setStudents, l2] = useFirebaseData('students', INITIAL_STUDENTS, fbUser);
     const [classes, setClasses, l3] = useFirebaseData('classes', INITIAL_CLASSES, fbUser);
     const [subjects, setSubjects, l4] = useFirebaseData('subjects', INITIAL_SUBJECTS, fbUser);
-    const [schedules, setSchedules, l5] = useFirebaseData('schedules', INITIAL_SCHEDULE, fbUser);
-    const [jurnals, setJurnals, l6] = useFirebaseData('jurnals', [], fbUser);
-    const [teacherAttendance, setTeacherAttendance, l7] = useFirebaseData('teacherAttendance', [], fbUser);
-    const [classLogs, setClassLogs, l8] = useFirebaseData('classLogs', [], fbUser);
-    const [accounts, setAccounts, l9] = useFirebaseData('accounts', INITIAL_ACCOUNTS, fbUser);
-    const [attendance, setAttendance, l10] = useFirebaseData('attendance', {}, fbUser); 
-    const [teacherDriveLinks, setTeacherDriveLinks, l11] = useFirebaseData('teacherDriveLinks', INITIAL_DRIVE_LINKS, fbUser);
-    const [schoolConfig, setSchoolConfig, l12] = useFirebaseData('schoolConfig', INITIAL_SCHOOL_CONFIG, fbUser);
     const [schoolDocs, setSchoolDocs, l13] = useFirebaseData('schoolDocs', INITIAL_SCHOOL_DOCS, fbUser);
-    const [perangkatLogs, setPerangkatLogs, l14] = useFirebaseData('perangkatLogs', [], fbUser);
+    const [teacherDriveLinks, setTeacherDriveLinks, l11] = useFirebaseData('teacherDriveLinks', INITIAL_DRIVE_LINKS, fbUser);
     const [calendarEvents, setCalendarEvents, l15] = useFirebaseData('calendarEvents', [], fbUser);
+
+    const [schedules, setSchedules, l5] = useFirebaseData('schedules', INITIAL_SCHEDULE, fbUser, null, currentScope);
+    const [jurnals, setJurnals, l6] = useFirebaseData('jurnals', [], fbUser, null, currentScope);
+    const [teacherAttendance, setTeacherAttendance, l7] = useFirebaseData('teacherAttendance', [], fbUser, null, currentScope);
+    const [classLogs, setClassLogs, l8] = useFirebaseData('classLogs', [], fbUser, null, currentScope);
+    const [attendance, setAttendance, l10] = useFirebaseData('attendance', {}, fbUser, null, currentScope); 
+    const [perangkatLogs, setPerangkatLogs, l14] = useFirebaseData('perangkatLogs', [], fbUser, null, currentScope);
 
     const isDataLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
 
@@ -2308,8 +2318,8 @@ export default function App() {
 
     const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name) : null; 
     const isPiket = currentTeacher?.status?.includes('Guru Piket');
-    const isWaliKelas = currentTeacher?.status?.includes('Wali Kelas');
-    const managedClass = isWaliKelas ? (classes || []).find(c => c.wali === user?.name)?.name : null;
+    const managedClass = (classes || []).find(c => c.wali === user?.name)?.name || null;
+    const isWaliKelas = !!managedClass || currentTeacher?.status?.includes('Wali Kelas');
     const isManagement = user?.role === 'admin' || user?.role === 'kepala_sekolah' || currentTeacher?.status?.includes('Kepala Sekolah') || currentTeacher?.status?.includes('Wakil Kepala Sekolah');
 
     return (
