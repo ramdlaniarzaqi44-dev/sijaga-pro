@@ -552,7 +552,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
 // --- KOMPONEN FITUR UTAMA ---
 const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs, setClassLogs, teacherAttendance, schedules, jurnals, showToast, isManagement }) => {
     const today = new Date();
-    const todayISO = today.toISOString().split('T')[0];
+    const todayISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     const todayLocale = today.toLocaleDateString('id-ID');
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const activeDay = days[today.getDay()];
@@ -590,7 +590,7 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
                     action: () => handleMasukKelas(sch) 
                 });
             }
-            const hasJournal = (jurnals || []).some(j => j.scheduleId === sch.id && j.date === todayLocale);
+            const hasJournal = (jurnals || []).some(j => (j.scheduleId === sch.id || (j.subject === sch.subject && j.class === sch.class)) && j.date === todayLocale);
             if (!hasJournal) {
                 pendingTasks.push({ id: `jurnal-${sch.id}`, title: `Isi Jurnal ${sch.class}`, desc: `${sch.subject} - ${sch.time || '00:00'}`, type: 'info', link: 'jurnal', btnText: 'Isi Jurnal' });
             }
@@ -737,7 +737,8 @@ const KalenderAkademik = ({ calendarEvents, schoolConfig }) => {
 const AbsensiGuru = ({ user, teacherAttendance, setTeacherAttendance, classLogs, setClassLogs, schedules, showToast }) => {
     const [status, setStatus] = useState('idle'); 
     const [location, setLocation] = useState(null);
-    const today = new Date().toISOString().split('T')[0];
+    const currentDate = new Date();
+    const today = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     const isPresent = (teacherAttendance || []).find(a => a.teacherName === user.name && a.date === today);
     
     const getAddressName = async (latitude, longitude) => {
@@ -1066,7 +1067,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
             {!selectedSchedule ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {(schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).map(item => {
@@ -1116,7 +1117,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                         setJurnals(p => {
                             const updated = [...(p || [])];
                             const idx = updated.findIndex(j => j.scheduleId === selectedSchedule.id && j.date === dateStr);
-                            const journalData = { ...selectedSchedule, ...form, date: dateStr, teacherName: user.name, absentStudents: getAbsentStudents(selectedSchedule.class) };
+                            const journalData = { ...selectedSchedule, scheduleId: selectedSchedule.id, ...form, date: dateStr, teacherName: user.name, absentStudents: getAbsentStudents(selectedSchedule.class) };
                             if(idx > -1) { updated[idx] = { ...updated[idx], ...journalData }; } 
                             else { updated.push({ ...journalData, id: Date.now() }); }
                             return updated;
@@ -1466,7 +1467,7 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
         return activeTeachers.map(teacherName => {
             const teacherSchedules = todaysSchedules.filter(s => s.teacherName === teacherName);
             const filledCount = teacherSchedules.reduce((acc, sch) => {
-                 const hasFilled = (jurnals || []).some(j => j.scheduleId === sch.id && j.date === todayLocale);
+                 const hasFilled = (jurnals || []).some(j => (j.scheduleId === sch.id || (j.subject === sch.subject && j.class === sch.class)) && j.date === todayLocale);
                  return acc + (hasFilled ? 1 : 0);
             }, 0);
             return {
@@ -1502,7 +1503,8 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
                     <div className="p-0 overflow-x-auto">
                         <table className="w-full text-left text-sm"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead><tbody className="divide-y divide-slate-100">
                             {(teachers || []).map(t => {
-                                const log = (teacherAttendance || []).find(a => a.teacherName === t.name && a.date === today.toISOString().split('T')[0]);
+                                const todayLocalISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                                const log = (teacherAttendance || []).find(a => a.teacherName === t.name && a.date === todayLocalISO);
                                 return (<tr key={t.id} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-bold text-slate-800">{t.name}</td><td className="px-6 py-4 text-slate-500">{log ? log.time : '-'}</td><td className="px-6 py-4 text-right">{log ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span> : <span className="text-slate-400 text-xs font-bold">Belum Absen</span>}</td></tr>);
                             })}
                         </tbody></table>
