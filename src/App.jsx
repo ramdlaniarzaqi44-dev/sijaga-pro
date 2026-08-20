@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft, Shield, HeartHandshake, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft, Shield, HeartHandshake, ExternalLink, Wand2, Printer, Bot, PlayCircle } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -484,7 +484,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
     const [isHovered, setIsHovered] = useState(false);
     const menuGroups = [
         { category: "Menu Utama", items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru'] }, { id: 'kalender-akademik', label: 'Kalender Pendidikan', icon: CalendarDays, roles: ['admin', 'guru'] }, { id: 'monitoring', label: 'Monitoring Guru', icon: Activity, roles: ['admin'] }, { id: 'monitoring-perangkat', label: 'Monitoring Perangkat', icon: FileBadge, roles: ['admin'] }, { id: 'analisis-siswa', label: 'Analisis Siswa', icon: BrainCircuit, roles: ['admin'] }, { id: 'data', label: 'Manajemen Data', icon: Database, roles: ['admin'] }, { id: 'generate-akun', label: 'Generate Akun', icon: Key, roles: ['admin'] }] },
-        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }, { id: 'perangkat-ujian', label: 'Perangkat Ujian', icon: FileBadge, roles: ['guru'] }, { id: 'kebutuhan-kbm', label: 'Kebutuhan KBM Guru', icon: FileText, roles: ['guru'] }] },
+        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }, { id: 'perangkat-ujian', label: 'Perangkat Ujian', icon: FileBadge, roles: ['guru'] }, { id: 'kebutuhan-kbm', label: 'Kebutuhan KBM Guru', icon: FileText, roles: ['guru'] }, { id: 'modul-ai', label: 'Modul Ajar AI', icon: Bot, roles: ['guru'] }, { id: 'soal-ai', label: 'Generate Soal AI', icon: FileBadge, roles: ['guru'] }] },
         { category: "Tugas Tambahan", items: [{ id: 'jurnal-piket', label: 'Jurnal Piket', icon: ClipboardCheck, roles: ['guru'] }] }
     ];
 
@@ -2145,6 +2145,15 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                             </div>
                             
                             <div className="pt-4 border-t border-slate-200 mt-6">
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Wand2 size={18}/> Pengaturan AI (Gemini API)</h4>
+                                <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
+                                    <input type="password" value={localSchoolConfig.geminiApiKey || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, geminiApiKey: e.target.value})} className="w-full p-2.5 border border-purple-300 rounded-lg focus:ring-purple-500 outline-none text-sm bg-white" placeholder="AIzaSy..." />
+                                    <p className="text-[10px] text-purple-600 mt-1">Dibutuhkan untuk fitur Generate Modul Ajar AI. Dapatkan di Google AI Studio secara gratis.</p>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 border-t border-slate-200 mt-6">
                                 <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText size={18}/> Pengaturan Dokumen Kebutuhan KBM Guru</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-100 p-4 rounded-xl border border-slate-200">
                                     <div><label className="block text-xs font-bold text-slate-700 mb-1">Link SK KBM</label><input type="text" value={localSchoolDocs.sk_kbm || ''} onChange={e=>setLocalSchoolDocs({...localSchoolDocs, sk_kbm: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none text-sm bg-white" placeholder="https://drive.google.com/file/d/.../view" /></div>
@@ -2228,6 +2237,389 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                         </div>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+const GenerateSoal = ({ schoolConfig, user, showToast, teachers }) => {
+    const [form, setForm] = useState({ 
+        fase: '', mapel: '', materi: '', 
+        pg: 0, pgDiff: 'Campuran', 
+        pgk: 0, pgkDiff: 'Campuran', 
+        jodoh: 0, jodohDiff: 'Campuran', 
+        bs: 0, bsDiff: 'Campuran', 
+        isian: 0, isianDiff: 'Campuran', 
+        uraian: 0, uraianDiff: 'Campuran', 
+        denganGambar: 0 
+    });
+    const [loading, setLoading] = useState(false);
+    const [generatedHtml, setGeneratedHtml] = useState('');
+    const printRef = useRef(null);
+
+    const handleGenerate = async () => {
+        if (!schoolConfig?.geminiApiKey) { showToast('Gemini API Key belum diatur!', 'error'); return; }
+        const totalSoal = form.pg + form.pgk + form.jodoh + form.bs + form.isian + form.uraian;
+        if (totalSoal === 0) { showToast('Tentukan minimal 1 jenis soal!', 'error'); return; }
+        if (!form.fase || !form.mapel || !form.materi) { showToast('Harap lengkapi Fase, Mapel, dan Materi!', 'error'); return; }
+
+        setLoading(true);
+        setGeneratedHtml('');
+        
+        try {
+            const prompt = `PENTING: JANGAN BUAT RPP ATAU MODUL AJAR! INI ADALAH MURNI LEMBAR SOAL UJIAN STANDAR SEKOLAH.
+Tugas Anda HANYA membuat daftar pertanyaan evaluasi untuk:
+- Fase/Kelas: ${form.fase}
+- Mata Pelajaran: ${form.mapel}
+- Materi/Tema: ${form.materi}
+
+Buat dengan komposisi dan TINGKAT KESULITAN berikut:
+${form.pg > 0 ? `- Pilihan Ganda (A, B, C, D): ${form.pg} soal (Tingkat: ${form.pgDiff})\n` : ''}${form.pgk > 0 ? `- Pilihan Ganda Kompleks (Pilih >1 benar): ${form.pgk} soal (Tingkat: ${form.pgkDiff})\n` : ''}${form.jodoh > 0 ? `- Menjodohkan (Tabel kiri kanan): ${form.jodoh} soal (Tingkat: ${form.jodohDiff})\n` : ''}${form.bs > 0 ? `- Benar/Salah: ${form.bs} soal (Tingkat: ${form.bsDiff})\n` : ''}${form.isian > 0 ? `- Isian Singkat: ${form.isian} soal (Tingkat: ${form.isianDiff})\n` : ''}${form.uraian > 0 ? `- Uraian / Esai: ${form.uraian} soal (Tingkat: ${form.uraianDiff})\n` : ''}
+
+${form.denganGambar > 0 ? `Sisipkan gambar ilustrasi nyata dari internet pada PERSIS ${form.denganGambar} soal yang butuh analisis gambar. Gunakan tag <img> ini di bawah teks soal:
+<img src="https://loremflickr.com/600/400/[kata_kunci]" alt="Ilustrasi Soal" style="width:100%; max-width:400px; height:auto; margin:10px 0; border: 1px solid #ccc; border-radius:4px;"/>
+Wajib ganti [kata_kunci] dengan SATU KATA KUNCI bahasa inggris (tanpa spasi) yang relevan dengan benda/objek di soal tersebut (contoh: cell, animal, earth, map). JANGAN gunakan URL lain.` : ''}
+
+Instruksi Format Standar Sekolah:
+1. MURNI langsung berisi kumpulan soal nomor 1, 2, dst. tanpa basa-basi di awal/akhir.
+2. Gunakan tag <ol> dan <li> untuk penomoran soal agar rapi (Format list HTML).
+3. Khusus Pilihan Ganda, opsi jawaban HARUS ke bawah berurutan A, B, C, D (gunakan tag <ol type="A">).
+4. Khusus Menjodohkan, gunakan tag <table> sederhana dengan border.
+5. Sediakan bagian "KUNCI JAWABAN DAN PEMBAHASAN SINGKAT" di bagian paling bawah secara jelas.
+6. HANYA output HTML murni tanpa dibungkus backtick markdown.`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${schoolConfig.geminiApiKey.trim()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Gagal (Status ${response.status}): ${errorData?.error?.message || response.statusText}`);
+            }
+            const data = await response.json();
+            if (data.candidates && data.candidates.length > 0) {
+                let htmlStr = data.candidates[0].content.parts[0].text;
+                setGeneratedHtml(htmlStr.replace(/```html\n?/gi, '').replace(/```\n?/g, ''));
+                showToast('Soal berhasil di-generate!', 'success');
+            } else { throw new Error('Respons AI kosong'); }
+        } catch (error) { showToast('AI Error: ' + error.message, 'error'); } finally { setLoading(false); }
+    };
+
+    const handlePrint = () => {
+        if (!generatedHtml) return;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><title>Lembar Soal - ${form.mapel}</title>
+            <style>
+                body { font-family: 'Times New Roman', Times, serif; line-height: 1.6; color: black; padding: 20px; }
+                table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+                table, th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                ol { padding-left: 20px; }
+                li { margin-bottom: 10px; }
+                li > ol { margin-top: 8px; margin-bottom: 15px; }
+                .identitas-siswa { margin-bottom: 25px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;}
+                @media print { @page { margin: 20mm; } body { -webkit-print-color-adjust: exact; } }
+            </style></head><body>
+            <div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid black; padding-bottom: 10px;">
+                <h2 style="margin: 0 0 5px 0; font-size: 20px; text-transform: uppercase;">UJI KOMPETENSI / PENILAIAN HARIAN</h2>
+                <p style="margin: 0; font-size: 14px;"><strong>Mata Pelajaran:</strong> ${form.mapel} | <strong>Fase/Kelas:</strong> ${form.fase}</p>
+                <p style="margin: 0; font-size: 14px;"><strong>Materi Pokok:</strong> ${form.materi}</p>
+            </div>
+            <div class="identitas-siswa">
+                <div>Nama : ....................................................</div>
+                <div>No. Absen : .....................</div>
+                <div>Kelas : .....................</div>
+            </div>
+            ${printRef.current.innerHTML}
+            </body></html>
+        `);
+        printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500);
+    };
+    
+    const handleNumberChange = (field, value) => setForm({ ...form, [field]: parseInt(value) || 0 });
+
+    const fieldLabels = { pg: 'Pil. Ganda', pgk: 'PG Kompleks', jodoh: 'Menjodohkan', bs: 'Benar / Salah', isian: 'Isian Singkat', uraian: 'Esai/Uraian' };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 relative">
+            <div className="bg-white px-8 py-6 border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><FileBadge size={28} /></div>
+                    <div><h1 className="text-2xl font-black text-slate-800">Generate Soal AI</h1><p className="text-sm text-slate-500">Buat perangkat soal kombinasi instan</p></div>
+                </div>
+            </div>
+            <div className="flex-1 flex overflow-hidden">
+                <div className="w-1/3 bg-white border-r border-slate-200 overflow-y-auto p-6">
+                    <h3 className="font-bold text-slate-800 mb-4"><Book size={18} className="inline text-indigo-500 mr-2"/> Identitas Soal</h3>
+                    <div className="space-y-4 mb-6 pb-4 border-b">
+                        <select value={form.fase} onChange={e=>setForm({...form, fase: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="">-- Pilih Fase --</option><option value="Fase A (Kelas 1-2)">Fase A (Kelas 1-2 SD)</option><option value="Fase D (Kelas 7-9)">Fase D (Kelas 7-9 SMP)</option><option value="Fase F (Kelas 11-12)">Fase F (Kelas 11-12 SMA/SMK)</option></select>
+                        <input type="text" value={form.mapel} onChange={e=>setForm({...form, mapel: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Mata Pelajaran" />
+                        <textarea rows="2" value={form.materi} onChange={e=>setForm({...form, materi: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Topik/Materi"></textarea>
+                    </div>
+                    <h3 className="font-bold text-slate-800 mb-4"><FileText size={18} className="inline text-indigo-500 mr-2"/> Komposisi Soal & Kesulitan</h3>
+                    <div className="grid grid-cols-1 gap-3 mb-6 pb-4 border-b">
+                        {Object.keys(fieldLabels).map(field => (
+                            <div key={field} className="border border-slate-200 p-2.5 rounded-lg bg-slate-50 flex flex-col gap-1.5">
+                                <label className="text-xs font-bold text-slate-700">{fieldLabels[field]}</label>
+                                <div className="flex gap-2">
+                                    <input type="number" min="0" value={form[field]} onChange={e=>handleNumberChange(field, e.target.value)} className="w-16 p-2 border rounded-lg text-sm text-center font-bold outline-none" title="Jumlah Soal" />
+                                    <select value={form[`${field}Diff`]} onChange={e=>setForm({...form, [`${field}Diff`]: e.target.value})} className="flex-1 p-2 border rounded-lg text-xs outline-none bg-white" title="Tingkat Kesulitan">
+                                        <option value="Campuran">Campuran</option>
+                                        <option value="Mudah">Mudah</option>
+                                        <option value="Sedang">Sedang</option>
+                                        <option value="Sulit">Sulit</option>
+                                        <option value="HOTS">HOTS (Higher Order)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mb-6">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Soal dgn Gambar Internet Nyata</label>
+                        <input type="number" min="0" value={form.denganGambar} onChange={e=>handleNumberChange('denganGambar', e.target.value)} className="w-full p-2.5 border rounded-lg text-sm font-bold" />
+                    </div>
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white'}`}>
+                        {loading ? <><Loader2 size={18} className="animate-spin" /> Sedang Menyusun...</> : <><Bot size={18} /> Generate Soal</>}
+                    </button>
+                </div>
+                <div className="w-2/3 bg-slate-100 p-6 flex flex-col relative overflow-hidden">
+                    <div className="bg-white rounded-t-xl border border-b-0 p-3 flex justify-between items-center shadow-sm">
+                        <h2 className="font-bold text-slate-700"><FileText size={18} className="inline text-blue-500 mr-2"/> Preview Lembar Soal</h2>
+                        {generatedHtml && <button onClick={handlePrint} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Printer size={16} /> Cetak / PDF</button>}
+                    </div>
+                    <div className="p-8 bg-slate-200 flex-1 overflow-y-auto">
+                        {loading ? <div className="flex flex-col items-center justify-center h-full text-indigo-600 animate-pulse"><Bot size={64} className="mb-4 opacity-50" /><p className="font-bold">AI sedang merumuskan kombinasi soal...</p></div> : 
+                        generatedHtml ? <div className="bg-white shadow-xl max-w-[21cm] mx-auto text-black p-10 min-h-[29.7cm]"><div ref={printRef} dangerouslySetInnerHTML={{ __html: generatedHtml }}></div></div> : 
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20"><p className="font-medium">Isi jumlah komposisi soal dan klik Generate.</p></div>}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
+    const [form, setForm] = useState({ fase: '', mapel: '', materi: '', alokasiWaktu: '2 x 45 Menit' });
+    const [loading, setLoading] = useState(false);
+    const [generatedHtml, setGeneratedHtml] = useState('');
+    const printRef = useRef(null);
+
+    const handleGenerate = async () => {
+        if (!schoolConfig?.geminiApiKey) {
+            showToast('Gemini API Key belum diatur! Silakan atur di menu Profil Sekolah.', 'error');
+            return;
+        }
+        if (!form.fase || !form.mapel || !form.materi) {
+            showToast('Harap lengkapi Fase, Mapel, dan Materi!', 'error');
+            return;
+        }
+
+        setLoading(true);
+        setGeneratedHtml('');
+        
+        try {
+            const prompt = `Buatlah Modul Ajar (RPP) Kurikulum Merdeka yang sangat lengkap dan akurat berdasarkan standar terbaru untuk:
+- Fase/Kelas: ${form.fase}
+- Mata Pelajaran: ${form.mapel}
+- Materi/Tema: ${form.materi}
+- Alokasi Waktu: ${form.alokasiWaktu}
+
+Instruksi Format:
+1. Berikan respons *HANYA* dalam format sintaks HTML murni (tanpa tag <html>, <head>, atau <body>, cukup langsung mulai dengan <div>, <h1>, dll). JANGAN bungkus dengan backtick markdown (\`\`\`html).
+2. Format HTML harus sangat rapi dan siap dirender. Gunakan tabel HTML (<table>, <tr>, <th>, <td>) dengan style CSS inline (misal: style="border-collapse: collapse; width: 100%; border: 1px solid black;") untuk bagian-bagian yang membutuhkan tabel (seperti rubrik penilaian atau LKPD).
+
+Struktur Wajib Modul Ajar (Kurikulum Merdeka):
+1. **Informasi Umum**: Identitas, Kompetensi Awal, Profil Pelajar Pancasila, Sarana & Prasarana, Target Peserta Didik, Model Pembelajaran.
+2. **Komponen Inti**: Tujuan Pembelajaran, Pemahaman Bermakna, Pertanyaan Pemantik, Kegiatan Pembelajaran (Pendahuluan, Inti, Penutup yang dijabarkan per tahapan dengan alokasi waktu). Sesuaikan materi ajar dengan literatur standar.
+3. **Asesmen**: Formatif & Sumatif. HARUS sertakan **Rubrik Penilaian** dalam bentuk tabel HTML yang jelas.
+4. **Lampiran**: **Lembar Kerja Peserta Didik (LKPD)** dengan format dan bentuk sesuai LKPD standar, menggunakan tabel atau kolom isian kosong (misalnya garis bawah).
+5. **Bahan Bacaan & Glosarium**: Bahan bacaan guru dan siswa, glosarium, daftar pustaka.
+6. **Gambar Ilustrasi 3D**: Sisipkan gambar ilustrasi pendukung bergaya 3D. Gunakan tag <img> berikut dan *Wajib* ganti teks \`[deskripsi_inggris]\` dengan terjemahan spesifik bahasa inggris dari materi (gunakan format URL encoding, misal spasi diganti %20):
+<img src="https://image.pollinations.ai/prompt/3d%20illustration%20of%20[deskripsi_inggris]%20realistic%20educational%20style%20high%20quality?width=800&height=400&nologo=true" alt="Ilustrasi Materi" style="width:100%; max-width:800px; height:auto; margin:20px 0; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);"/>`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${schoolConfig.geminiApiKey.trim()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData?.error?.message || response.statusText || 'Kesalahan Jaringan';
+                throw new Error(`Gagal (Status ${response.status}): ${errorMessage}`);
+            }
+            
+            const data = await response.json();
+            if (data.candidates && data.candidates.length > 0) {
+                let htmlStr = data.candidates[0].content.parts[0].text;
+                htmlStr = htmlStr.replace(/```html\n?/gi, '').replace(/```\n?/g, '');
+                setGeneratedHtml(htmlStr);
+                showToast('Modul Ajar berhasil di-generate!', 'success');
+            } else {
+                throw new Error('Respons AI kosong (Kemungkinan terblokir filter keamanan)');
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('AI Error: ' + error.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePrint = () => {
+        const content = printRef.current.innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Modul Ajar - ${form.mapel}</title>
+                    <style>
+                        body { font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.5; padding: 20px; }
+                        h1, h2, h3, h4, h5 { font-family: 'Arial', sans-serif; margin-top: 1.5em; margin-bottom: 0.5em; }
+                        table { border-collapse: collapse; width: 100%; margin: 15px 0; page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 20px; position: relative; }
+                        .kop-surat img { position: absolute; left: 0; top: 0; width: 80px; height: 80px; object-fit: contain; }
+                        .kop-surat h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+                        .kop-surat p { margin: 2px 0; font-size: 14px; }
+                        .ttd-container { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                        .ttd-box { text-align: center; width: 300px; }
+                        .ttd-box p { margin: 2px 0; }
+                        .ttd-space { height: 80px; }
+                        .ttd-name { font-weight: bold; text-decoration: underline; }
+                        @media print {
+                            body { padding: 0; }
+                            @page { margin: 1.5cm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    };
+
+    const principal = (teachers || []).find(t => t.status && t.status.toLowerCase().includes('kepala sekolah'));
+    const principalName = principal ? principal.name : '.......................................................';
+    const principalNip = principal && principal.nip && principal.nip !== '-' ? `NIP. ${principal.nip}` : '';
+    const currentTeacher = (teachers || []).find(t => t.name === user.name);
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Wand2 size={32} /></div>
+                    <div><h2 className="text-2xl font-bold text-slate-800">Generate Modul Ajar AI</h2><p className="text-slate-500 text-sm">Buat RPP Kurikulum Merdeka secara instan dengan kecerdasan buatan</p></div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4 h-max">
+                    <h3 className="font-bold text-slate-800 border-b pb-2">Parameter Modul</h3>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Fase / Kelas</label>
+                        <select value={form.fase} onChange={e=>setForm({...form, fase: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm">
+                            <option value="">-- Pilih Fase --</option>
+                            <option value="Fase A (Kelas 1-2)">Fase A (Kelas 1-2 SD)</option>
+                            <option value="Fase B (Kelas 3-4)">Fase B (Kelas 3-4 SD)</option>
+                            <option value="Fase C (Kelas 5-6)">Fase C (Kelas 5-6 SD)</option>
+                            <option value="Fase D (Kelas 7-9)">Fase D (Kelas 7-9 SMP)</option>
+                            <option value="Fase E (Kelas 10)">Fase E (Kelas 10 SMA/SMK)</option>
+                            <option value="Fase F (Kelas 11-12)">Fase F (Kelas 11-12 SMA/SMK)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+                        <input type="text" value={form.mapel} onChange={e=>setForm({...form, mapel: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm" placeholder="Contoh: Matematika" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Materi Pokok / Tema</label>
+                        <textarea rows="2" value={form.materi} onChange={e=>setForm({...form, materi: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm" placeholder="Contoh: Sistem Persamaan Linear Dua Variabel"></textarea>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Alokasi Waktu</label>
+                        <input type="text" value={form.alokasiWaktu} onChange={e=>setForm({...form, alokasiWaktu: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm" placeholder="Contoh: 2 x 45 Menit" />
+                    </div>
+                    
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:shadow-lg hover:from-purple-700 hover:to-indigo-700'}`}>
+                        {loading ? <><Loader2 size={18} className="animate-spin" /> Sedang Menulis...</> : <><Bot size={18} /> Generate Modul Ajar</>}
+                    </button>
+                    {!schoolConfig?.geminiApiKey && (
+                        <p className="text-xs text-red-500 mt-2 text-center bg-red-50 p-2 rounded-lg border border-red-100">
+                            Peringatan: Gemini API Key belum diatur. AI tidak akan berfungsi. Minta Admin mengatur di Profil Sekolah.
+                        </p>
+                    )}
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col min-h-[600px] overflow-hidden">
+                    <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2"><FileText size={18}/> Preview Modul Ajar</h3>
+                        <button onClick={handlePrint} disabled={!generatedHtml || loading} className="px-4 py-2 bg-slate-800 text-white rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-700 disabled:opacity-50 transition-colors">
+                            <Printer size={16} /> Cetak / PDF
+                        </button>
+                    </div>
+                    
+                    <div className="p-8 bg-slate-200 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-full text-purple-600 animate-pulse py-20">
+                                <Bot size={64} className="mb-4 opacity-50" />
+                                <p className="font-bold">AI sedang menyusun Modul Ajar...</p>
+                                <p className="text-sm opacity-70">Ini mungkin memakan waktu hingga 30 detik. Harap tunggu.</p>
+                            </div>
+                        ) : generatedHtml ? (
+                            <div className="bg-white shadow-xl max-w-[21cm] mx-auto text-black p-10 min-h-[29.7cm]">
+                                {/* PRINT CONTAINER */}
+                                <div ref={printRef}>
+                                    {/* KOP SURAT */}
+                                    <div className="kop-surat" style={{ textAlign: 'center', borderBottom: '3px solid black', paddingBottom: '15px', marginBottom: '20px', position: 'relative' }}>
+                                        {schoolConfig?.logo && <img src={schoolConfig.logo} alt="Logo" style={{ position: 'absolute', left: 0, top: 0, width: '80px', height: '80px', objectFit: 'contain' }} onError={(e) => {e.target.style.display='none'}}/>}
+                                        <h1 style={{ margin: 0, fontSize: '24px', textTransform: 'uppercase' }}>{schoolConfig?.name || 'NAMA SEKOLAH BELUM DIATUR'}</h1>
+                                        <p style={{ margin: '2px 0', fontSize: '14px' }}>{schoolConfig?.address || 'Alamat Sekolah Belum Diatur'}</p>
+                                        <p style={{ margin: '2px 0', fontSize: '14px' }}>Email: {schoolConfig?.email || '-'} | NPSN: {schoolConfig?.npsn || '-'}</p>
+                                    </div>
+                                    
+                                    {/* KONTEN AI */}
+                                    <div className="ai-content" style={{ fontFamily: '"Times New Roman", Times, serif', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: generatedHtml }}></div>
+
+                                    {/* TANDA TANGAN */}
+                                    <div className="ttd-container" style={{ marginTop: '50px', display: 'flex', justifyContent: 'space-between', pageBreakInside: 'avoid' }}>
+                                        <div className="ttd-box" style={{ textAlign: 'center', width: '250px' }}>
+                                            <p>Mengetahui,</p>
+                                            <p>Kepala Sekolah</p>
+                                            <div style={{ height: '80px' }}></div>
+                                            <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{principalName}</p>
+                                            <p>{principalNip}</p>
+                                        </div>
+                                        <div className="ttd-box" style={{ textAlign: 'center', width: '250px' }}>
+                                            <p>{schoolConfig?.address ? schoolConfig.address.split(',').pop().trim() : '...................'}, {new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
+                                            <p>Guru Mata Pelajaran</p>
+                                            <div style={{ height: '80px' }}></div>
+                                            <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{user.name}</p>
+                                            {currentTeacher?.nip && currentTeacher.nip !== '-' && <p>NIP. {currentTeacher.nip}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20">
+                                <FileText size={64} className="mb-4 opacity-20" />
+                                <p>Isi parameter dan klik Generate untuk melihat hasil di sini.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -2356,6 +2748,8 @@ export default function App() {
                     {activeTab === 'kebutuhan-kbm' && <KebutuhanKBMGuru schoolDocs={schoolDocs || {}} isPiket={isPiket} />}
                     {activeTab === 'presensi' && <PresensiSiswa students={students || []} attendance={attendance || {}} setAttendance={setAttendance} showToast={showToast} user={user} schedules={schedules || []} classes={classes || []} />}
                     {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
+                    {activeTab === 'modul-ai' && <GenerateRPP schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
+                    {activeTab === 'soal-ai' && <GenerateSoal schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'monitoring' && <MonitoringGuru teacherAttendance={teacherAttendance || []} classLogs={classLogs || []} schedules={schedules || []} jurnals={jurnals || []} teachers={teachers || []} />}
                     {activeTab === 'monitoring-perangkat' && <MonitoringPerangkat perangkatLogs={perangkatLogs || []} />}
                     {activeTab === 'analisis-siswa' && <AnalisisSiswa classes={classes || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} schedules={schedules || []} user={user} isWaliKelas={isWaliKelas} managedClass={managedClass} isManagement={isManagement} />}
