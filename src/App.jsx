@@ -394,7 +394,7 @@ const KebutuhanKBMGuru = ({ schoolDocs, isPiket }) => {
                 </div>
 
                 {isPiket && (
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.web.app/', '_blank')}>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.vercel.app/', '_blank')}>
                         <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield size={28} /></div>
                         <h3 className="font-bold text-slate-800 text-lg mb-1">SIGAP (Piket)</h3>
                         <p className="text-xs text-slate-500 mb-4">Jurnal & Laporan Guru Piket</p>
@@ -524,7 +524,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
                                             if (item.id === 'asesmen') {
                                                 window.open('https://erapor-zeta.vercel.app/', '_blank');
                                             } else if (item.id === 'jurnal-piket') {
-                                                window.open('https://sigapaltaz.web.app/', '_blank');
+                                                window.open('https://sigapaltaz.vercel.app/', '_blank');
                                             } else {
                                                 setActiveTab(item.id); 
                                                 setIsOpen(false); 
@@ -2244,7 +2244,7 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
 
 const GenerateSoal = ({ schoolConfig, user, showToast, teachers }) => {
     const [form, setForm] = useState({ 
-        fase: '', mapel: '', materi: '', 
+        kelas: '', mapel: '', materi: '', 
         pg: 0, pgDiff: 'Campuran', 
         pgk: 0, pgkDiff: 'Campuran', 
         jodoh: 0, jodohDiff: 'Campuran', 
@@ -2257,11 +2257,20 @@ const GenerateSoal = ({ schoolConfig, user, showToast, teachers }) => {
     const [generatedHtml, setGeneratedHtml] = useState('');
     const printRef = useRef(null);
 
+    useEffect(() => {
+        if (window.MathJax && generatedHtml) {
+            setTimeout(() => {
+                window.MathJax.typesetClear();
+                window.MathJax.typesetPromise().catch((err) => console.log(err));
+            }, 100);
+        }
+    }, [generatedHtml]);
+
     const handleGenerate = async () => {
         if (!schoolConfig?.geminiApiKey) { showToast('Gemini API Key belum diatur!', 'error'); return; }
         const totalSoal = form.pg + form.pgk + form.jodoh + form.bs + form.isian + form.uraian;
         if (totalSoal === 0) { showToast('Tentukan minimal 1 jenis soal!', 'error'); return; }
-        if (!form.fase || !form.mapel || !form.materi) { showToast('Harap lengkapi Fase, Mapel, dan Materi!', 'error'); return; }
+        if (!form.kelas || !form.mapel || !form.materi) { showToast('Harap lengkapi Kelas, Mapel, dan Materi!', 'error'); return; }
 
         setLoading(true);
         setGeneratedHtml('');
@@ -2269,7 +2278,7 @@ const GenerateSoal = ({ schoolConfig, user, showToast, teachers }) => {
         try {
             const prompt = `PENTING: JANGAN BUAT RPP ATAU MODUL AJAR! INI ADALAH MURNI LEMBAR SOAL UJIAN STANDAR SEKOLAH.
 Tugas Anda HANYA membuat daftar pertanyaan evaluasi untuk:
-- Fase/Kelas: ${form.fase}
+- Tingkat/Kelas: ${form.kelas}
 - Mata Pelajaran: ${form.mapel}
 - Materi/Tema: ${form.materi}
 
@@ -2285,8 +2294,9 @@ Instruksi Format Standar Sekolah:
 2. Gunakan tag <ol> dan <li> untuk penomoran soal agar rapi (Format list HTML).
 3. Khusus Pilihan Ganda, opsi jawaban HARUS ke bawah berurutan A, B, C, D (gunakan tag <ol type="A">).
 4. Khusus Menjodohkan, gunakan tag <table> sederhana dengan border.
-5. Sediakan bagian "KUNCI JAWABAN DAN PEMBAHASAN SINGKAT" di bagian paling bawah secara jelas.
-6. HANYA output HTML murni tanpa dibungkus backtick markdown.`;
+5. PENTING UNTUK MATEMATIKA: WAJIB gunakan format LaTeX murni untuk SEMUA simbol matematika, rumus, pecahan, akar, pangkat, dan bilangan (contoh: \\( \\frac{1}{2} \\) untuk pecahan, \\( \\sqrt{2} \\) untuk akar, \\( x^2 \\) untuk pangkat). Gunakan \\( ... \\) untuk rumus dalam baris (inline) dan \\[ ... \\] untuk rumus blok (display). Sistem aplikasi sudah dilengkapi 'Equation Model' (MathJax) yang secara otomatis merender LaTeX menjadi format nyata seperti Microsoft Equation!
+6. Sediakan bagian "KUNCI JAWABAN DAN PEMBAHASAN SINGKAT" di bagian paling bawah secara jelas.
+7. HANYA output HTML murni tanpa dibungkus backtick markdown.`;
 
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${schoolConfig.geminiApiKey.trim()}`, {
                 method: 'POST',
@@ -2309,9 +2319,13 @@ Instruksi Format Standar Sekolah:
 
     const handlePrint = () => {
         if (!generatedHtml) return;
+        const mathJaxStyles = document.getElementById('MJX-CHTML-styles') ? document.getElementById('MJX-CHTML-styles').outerHTML : '';
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <html><head><title>Lembar Soal - ${form.mapel}</title>
+            <script>window.MathJax = { tex: { inlineMath: [['\\\\(', '\\\\)']], displayMath: [['\\\\[', '\\\\]'], ['$$', '$$']] } };</script>
+            <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+            ${mathJaxStyles}
             <style>
                 body { font-family: 'Times New Roman', Times, serif; line-height: 1.6; color: black; padding: 20px; }
                 table { border-collapse: collapse; width: 100%; margin: 15px 0; }
@@ -2324,7 +2338,7 @@ Instruksi Format Standar Sekolah:
             </style></head><body>
             <div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid black; padding-bottom: 10px;">
                 <h2 style="margin: 0 0 5px 0; font-size: 20px; text-transform: uppercase;">UJI KOMPETENSI / PENILAIAN HARIAN</h2>
-                <p style="margin: 0; font-size: 14px;"><strong>Mata Pelajaran:</strong> ${form.mapel} | <strong>Fase/Kelas:</strong> ${form.fase}</p>
+                <p style="margin: 0; font-size: 14px;"><strong>Mata Pelajaran:</strong> ${form.mapel} | <strong>Kelas:</strong> ${form.kelas}</p>
                 <p style="margin: 0; font-size: 14px;"><strong>Materi Pokok:</strong> ${form.materi}</p>
             </div>
             <div class="identitas-siswa">
@@ -2354,7 +2368,21 @@ Instruksi Format Standar Sekolah:
                 <div className="w-1/3 bg-white border-r border-slate-200 overflow-y-auto p-6">
                     <h3 className="font-bold text-slate-800 mb-4"><Book size={18} className="inline text-indigo-500 mr-2"/> Identitas Soal</h3>
                     <div className="space-y-4 mb-6 pb-4 border-b">
-                        <select value={form.fase} onChange={e=>setForm({...form, fase: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="">-- Pilih Fase --</option><option value="Fase A (Kelas 1-2)">Fase A (Kelas 1-2 SD)</option><option value="Fase D (Kelas 7-9)">Fase D (Kelas 7-9 SMP)</option><option value="Fase F (Kelas 11-12)">Fase F (Kelas 11-12 SMA/SMK)</option></select>
+                        <select value={form.kelas} onChange={e=>setForm({...form, kelas: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm">
+                            <option value="">-- Pilih Kelas --</option>
+                            <option value="Kelas 1 SD (Fase A)">Kelas 1 SD (Fase A)</option>
+                            <option value="Kelas 2 SD (Fase A)">Kelas 2 SD (Fase A)</option>
+                            <option value="Kelas 3 SD (Fase B)">Kelas 3 SD (Fase B)</option>
+                            <option value="Kelas 4 SD (Fase B)">Kelas 4 SD (Fase B)</option>
+                            <option value="Kelas 5 SD (Fase C)">Kelas 5 SD (Fase C)</option>
+                            <option value="Kelas 6 SD (Fase C)">Kelas 6 SD (Fase C)</option>
+                            <option value="Kelas 7 SMP (Fase D)">Kelas 7 SMP (Fase D)</option>
+                            <option value="Kelas 8 SMP (Fase D)">Kelas 8 SMP (Fase D)</option>
+                            <option value="Kelas 9 SMP (Fase D)">Kelas 9 SMP (Fase D)</option>
+                            <option value="Kelas 10 SMA/SMK (Fase E)">Kelas 10 SMA/SMK (Fase E)</option>
+                            <option value="Kelas 11 SMA/SMK (Fase F)">Kelas 11 SMA/SMK (Fase F)</option>
+                            <option value="Kelas 12 SMA/SMK (Fase F)">Kelas 12 SMA/SMK (Fase F)</option>
+                        </select>
                         <input type="text" value={form.mapel} onChange={e=>setForm({...form, mapel: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Mata Pelajaran" />
                         <textarea rows="2" value={form.materi} onChange={e=>setForm({...form, materi: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Topik/Materi"></textarea>
                     </div>
@@ -2401,18 +2429,27 @@ Instruksi Format Standar Sekolah:
 };
 
 const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
-    const [form, setForm] = useState({ fase: '', mapel: '', materi: '', alokasiWaktu: '2 x 45 Menit' });
+    const [form, setForm] = useState({ kelas: '', mapel: '', materi: '', alokasiWaktu: '2 x 45 Menit' });
     const [loading, setLoading] = useState(false);
     const [generatedHtml, setGeneratedHtml] = useState('');
     const printRef = useRef(null);
+
+    useEffect(() => {
+        if (window.MathJax && generatedHtml) {
+            setTimeout(() => {
+                window.MathJax.typesetClear();
+                window.MathJax.typesetPromise().catch((err) => console.log(err));
+            }, 100);
+        }
+    }, [generatedHtml]);
 
     const handleGenerate = async () => {
         if (!schoolConfig?.geminiApiKey) {
             showToast('Gemini API Key belum diatur! Silakan atur di menu Profil Sekolah.', 'error');
             return;
         }
-        if (!form.fase || !form.mapel || !form.materi) {
-            showToast('Harap lengkapi Fase, Mapel, dan Materi!', 'error');
+        if (!form.kelas || !form.mapel || !form.materi) {
+            showToast('Harap lengkapi Kelas, Mapel, dan Materi!', 'error');
             return;
         }
 
@@ -2421,7 +2458,7 @@ const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
         
         try {
             const prompt = `Buatlah Modul Ajar (RPP) Kurikulum Merdeka yang sangat lengkap dan akurat berdasarkan standar terbaru untuk:
-- Fase/Kelas: ${form.fase}
+- Tingkat/Kelas: ${form.kelas}
 - Mata Pelajaran: ${form.mapel}
 - Materi/Tema: ${form.materi}
 - Alokasi Waktu: ${form.alokasiWaktu}
@@ -2429,6 +2466,7 @@ const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
 Instruksi Format:
 1. Berikan respons *HANYA* dalam format sintaks HTML murni (tanpa tag <html>, <head>, atau <body>, cukup langsung mulai dengan <div>, <h1>, dll). JANGAN bungkus dengan backtick markdown (\`\`\`html).
 2. Format HTML harus sangat rapi dan siap dirender. Gunakan tabel HTML (<table>, <tr>, <th>, <td>) dengan style CSS inline (misal: style="border-collapse: collapse; width: 100%; border: 1px solid black;") untuk bagian-bagian yang membutuhkan tabel (seperti rubrik penilaian atau LKPD).
+3. PENTING UNTUK MATEMATIKA: WAJIB gunakan format LaTeX murni untuk SEMUA simbol matematika, rumus, pecahan, akar, pangkat, dan bilangan (contoh: \\( \\frac{1}{2} \\) untuk pecahan, \\( \\sqrt{2} \\) untuk akar, \\( x^2 \\) untuk pangkat). Gunakan \\( ... \\) untuk rumus dalam baris (inline) dan \\[ ... \\] untuk rumus blok (display). Sistem aplikasi sudah dilengkapi 'Equation Model' (MathJax) yang secara otomatis merender LaTeX menjadi format nyata seperti Microsoft Equation!
 
 Struktur Wajib Modul Ajar (Kurikulum Merdeka):
 1. **Informasi Umum**: Identitas, Kompetensi Awal, Profil Pelajar Pancasila, Sarana & Prasarana, Target Peserta Didik, Model Pembelajaran.
@@ -2473,11 +2511,15 @@ Struktur Wajib Modul Ajar (Kurikulum Merdeka):
 
     const handlePrint = () => {
         const content = printRef.current.innerHTML;
+        const mathJaxStyles = document.getElementById('MJX-CHTML-styles') ? document.getElementById('MJX-CHTML-styles').outerHTML : '';
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Modul Ajar - ${form.mapel}</title>
+                    <script>window.MathJax = { tex: { inlineMath: [['\\\\(', '\\\\)']], displayMath: [['\\\\[', '\\\\]'], ['$$', '$$']] } };</script>
+                    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+                    ${mathJaxStyles}
                     <style>
                         body { font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.5; padding: 20px; }
                         h1, h2, h3, h4, h5 { font-family: 'Arial', sans-serif; margin-top: 1.5em; margin-bottom: 0.5em; }
@@ -2529,15 +2571,21 @@ Struktur Wajib Modul Ajar (Kurikulum Merdeka):
                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4 h-max">
                     <h3 className="font-bold text-slate-800 border-b pb-2">Parameter Modul</h3>
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Fase / Kelas</label>
-                        <select value={form.fase} onChange={e=>setForm({...form, fase: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm">
-                            <option value="">-- Pilih Fase --</option>
-                            <option value="Fase A (Kelas 1-2)">Fase A (Kelas 1-2 SD)</option>
-                            <option value="Fase B (Kelas 3-4)">Fase B (Kelas 3-4 SD)</option>
-                            <option value="Fase C (Kelas 5-6)">Fase C (Kelas 5-6 SD)</option>
-                            <option value="Fase D (Kelas 7-9)">Fase D (Kelas 7-9 SMP)</option>
-                            <option value="Fase E (Kelas 10)">Fase E (Kelas 10 SMA/SMK)</option>
-                            <option value="Fase F (Kelas 11-12)">Fase F (Kelas 11-12 SMA/SMK)</option>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Tingkat / Kelas</label>
+                        <select value={form.kelas} onChange={e=>setForm({...form, kelas: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm">
+                            <option value="">-- Pilih Kelas --</option>
+                            <option value="Kelas 1 SD (Fase A)">Kelas 1 SD (Fase A)</option>
+                            <option value="Kelas 2 SD (Fase A)">Kelas 2 SD (Fase A)</option>
+                            <option value="Kelas 3 SD (Fase B)">Kelas 3 SD (Fase B)</option>
+                            <option value="Kelas 4 SD (Fase B)">Kelas 4 SD (Fase B)</option>
+                            <option value="Kelas 5 SD (Fase C)">Kelas 5 SD (Fase C)</option>
+                            <option value="Kelas 6 SD (Fase C)">Kelas 6 SD (Fase C)</option>
+                            <option value="Kelas 7 SMP (Fase D)">Kelas 7 SMP (Fase D)</option>
+                            <option value="Kelas 8 SMP (Fase D)">Kelas 8 SMP (Fase D)</option>
+                            <option value="Kelas 9 SMP (Fase D)">Kelas 9 SMP (Fase D)</option>
+                            <option value="Kelas 10 SMA/SMK (Fase E)">Kelas 10 SMA/SMK (Fase E)</option>
+                            <option value="Kelas 11 SMA/SMK (Fase F)">Kelas 11 SMA/SMK (Fase F)</option>
+                            <option value="Kelas 12 SMA/SMK (Fase F)">Kelas 12 SMA/SMK (Fase F)</option>
                         </select>
                     </div>
                     <div>
