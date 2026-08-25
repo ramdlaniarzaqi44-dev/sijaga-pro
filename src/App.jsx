@@ -484,7 +484,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
     const [isHovered, setIsHovered] = useState(false);
     const menuGroups = [
         { category: "Menu Utama", items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru'] }, { id: 'kalender-akademik', label: 'Kalender Pendidikan', icon: CalendarDays, roles: ['admin', 'guru'] }, { id: 'monitoring', label: 'Monitoring Guru', icon: Activity, roles: ['admin'] }, { id: 'monitoring-perangkat', label: 'Monitoring Perangkat', icon: FileBadge, roles: ['admin'] }, { id: 'analisis-siswa', label: 'Analisis Siswa', icon: BrainCircuit, roles: ['admin'] }, { id: 'data', label: 'Manajemen Data', icon: Database, roles: ['admin'] }, { id: 'generate-akun', label: 'Generate Akun', icon: Key, roles: ['admin'] }] },
-        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }, { id: 'perangkat-ujian', label: 'Perangkat Ujian', icon: FileBadge, roles: ['guru'] }, { id: 'kebutuhan-kbm', label: 'Kebutuhan KBM Guru', icon: FileText, roles: ['guru'] }, { id: 'modul-ai', label: 'Modul Ajar AI', icon: Bot, roles: ['guru'] }, { id: 'soal-ai', label: 'Generate Soal AI', icon: FileBadge, roles: ['guru'] }] },
+        { category: "Administrasi Guru", items: [{ id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] }, { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] }, { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] }, { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] }, { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] }, { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] }, { id: 'perangkat-ujian', label: 'Perangkat Ujian', icon: FileBadge, roles: ['guru'] }, { id: 'kebutuhan-kbm', label: 'Kebutuhan KBM Guru', icon: FileText, roles: ['guru'] }, { id: 'materi-ai', label: 'Generate Materi AI', icon: BookOpen, roles: ['guru'] }, { id: 'modul-ai', label: 'Modul Ajar AI', icon: Bot, roles: ['guru'] }, { id: 'soal-ai', label: 'Generate Soal AI', icon: FileBadge, roles: ['guru'] }] },
         { category: "Tugas Tambahan", items: [{ id: 'jurnal-piket', label: 'Jurnal Piket', icon: ClipboardCheck, roles: ['guru'] }] }
     ];
 
@@ -2428,6 +2428,156 @@ Instruksi Format Standar Sekolah:
     );
 };
 
+const GenerateMateri = ({ schoolConfig, user, showToast, teachers }) => {
+    const [form, setForm] = useState({ kelas: '', mapel: '', materi: '' });
+    const [loading, setLoading] = useState(false);
+    const [generatedHtml, setGeneratedHtml] = useState('');
+    const printRef = useRef(null);
+
+    useEffect(() => {
+        if (window.MathJax && generatedHtml) {
+            setTimeout(() => {
+                window.MathJax.typesetClear();
+                window.MathJax.typesetPromise().catch((err) => console.log(err));
+            }, 100);
+        }
+    }, [generatedHtml]);
+
+    const handleGenerate = async () => {
+        if (!schoolConfig?.geminiApiKey) { showToast('Gemini API Key belum diatur!', 'error'); return; }
+        if (!form.kelas || !form.mapel || !form.materi) { showToast('Harap lengkapi Kelas, Mapel, dan Kata Kunci Materi!', 'error'); return; }
+
+        setLoading(true);
+        setGeneratedHtml('');
+        
+        try {
+            const prompt = `PENTING: Buatlah Bahan Bacaan / Materi Ajar lengkap sesuai Kurikulum Merdeka 2026 yang VALID dan bersumber resmi dari standar Kemdikbudristek.
+Tugas Anda menjabarkan materi secara komprehensif untuk:
+- Tingkat/Kelas: ${form.kelas}
+- Mata Pelajaran: ${form.mapel}
+- Materi/Kata Kunci: ${form.materi}
+
+Instruksi Konten:
+1. JANGAN sekadar membuat ringkasan singkat. Terangkan seluruh konsep, definisi, dan teori secara terperinci, mendalam, dan jelas selayaknya isi buku teks lengkap sekolah.
+2. Materi harus mencakup: 
+   - Pendahuluan & Konsep Dasar
+   - Penjelasan Materi Inti (berikan penjabaran detail per sub-topik)
+   - Contoh Penerapan atau Studi Kasus
+   - Rangkuman Materi
+3. Di bagian paling akhir, berikan 5 Latihan Soal Evaluasi formatif beserta Kunci Jawabannya.
+4. Semua isi harus relevan dengan Capaian Pembelajaran Kurikulum Merdeka 2026.
+
+Instruksi Format:
+1. MURNI langsung berisi materi. JANGAN ada pengantar basa-basi di awal/akhir.
+2. HANYA output HTML murni (gunakan <h1>, <h2>, <p>, <ul>, <li>, <strong>). JANGAN bungkus dengan backtick markdown (\`\`\`html).
+3. PENTING UNTUK MATEMATIKA: WAJIB gunakan format LaTeX murni untuk SEMUA simbol matematika, rumus, pecahan, akar, pangkat, dan bilangan (contoh: \\( \\frac{1}{2} \\)). Gunakan \\( ... \\) untuk rumus dalam baris (inline) dan \\[ ... \\] untuk rumus blok (display). Sistem aplikasi sudah dilengkapi 'Equation Model' (MathJax) yang secara otomatis merender LaTeX menjadi format nyata seperti Microsoft Equation!
+4. WAJIB Sisipkan 1-2 gambar ilustrasi pendukung bergaya 3D pada sub-bab yang relevan. Gunakan tag <img> berikut dan ganti [deskripsi_inggris] dengan terjemahan spesifik bahasa inggris dari topik sub-bab tersebut (tanpa spasi, gunakan %20):
+<img src="https://image.pollinations.ai/prompt/3d%20illustration%20of%20[deskripsi_inggris]%20realistic%20educational%20style%20high%20quality?width=800&height=400&nologo=true" alt="Ilustrasi Materi" style="width:100%; max-width:800px; height:auto; margin:20px 0; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: block;"/>`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${schoolConfig.geminiApiKey.trim()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Gagal (Status ${response.status}): ${errorData?.error?.message || response.statusText}`);
+            }
+            const data = await response.json();
+            if (data.candidates && data.candidates.length > 0) {
+                let htmlStr = data.candidates[0].content.parts[0].text;
+                setGeneratedHtml(htmlStr.replace(/```html\n?/gi, '').replace(/```\n?/g, ''));
+                showToast('Materi berhasil di-generate!', 'success');
+            } else { throw new Error('Respons AI kosong'); }
+        } catch (error) { showToast('AI Error: ' + error.message, 'error'); } finally { setLoading(false); }
+    };
+
+    const handlePrint = () => {
+        if (!generatedHtml) return;
+        const mathJaxStyles = document.getElementById('MJX-CHTML-styles') ? document.getElementById('MJX-CHTML-styles').outerHTML : '';
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><title>Materi Ajar - ${form.mapel}</title>
+            <script>window.MathJax = { tex: { inlineMath: [['\\\\(', '\\\\)']], displayMath: [['\\\\[', '\\\\]'], ['$$', '$$']] } };</script>
+            <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+            ${mathJaxStyles}
+            <style>
+                body { font-family: 'Times New Roman', Times, serif; line-height: 1.6; color: black; padding: 20px; }
+                h1 { text-align: center; text-transform: uppercase; font-size: 22px; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; }
+                h2 { font-size: 18px; margin-top: 20px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                h3 { font-size: 16px; margin-top: 15px; }
+                table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+                table, th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                ul, ol { padding-left: 20px; }
+                .identitas { font-weight: bold; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+                @media print { @page { margin: 20mm; } body { -webkit-print-color-adjust: exact; } .identitas { border: 1px solid black; background: transparent; } }
+            </style></head><body>
+            <h1>MATERI AJAR / BAHAN BACAAN</h1>
+            <div class="identitas">
+                <p style="margin: 2px 0;">Mata Pelajaran: ${form.mapel}</p>
+                <p style="margin: 2px 0;">Kelas: ${form.kelas}</p>
+                <p style="margin: 2px 0;">Topik / Materi: ${form.materi}</p>
+            </div>
+            ${printRef.current.innerHTML}
+            </body></html>
+        `);
+        printWindow.document.close(); setTimeout(() => printWindow.print(), 500);
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 relative animate-fade-in">
+            <div className="bg-white px-8 py-6 border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600"><BookOpen size={28} /></div>
+                    <div><h1 className="text-2xl font-black text-slate-800">Generate Materi AI</h1><p className="text-sm text-slate-500">Buat materi ajar lengkap Kurikulum Merdeka 2026</p></div>
+                </div>
+            </div>
+            <div className="flex-1 flex overflow-hidden">
+                <div className="w-1/3 bg-white border-r border-slate-200 overflow-y-auto p-6">
+                    <h3 className="font-bold text-slate-800 mb-4"><Book size={18} className="inline text-emerald-500 mr-2"/> Topik Materi</h3>
+                    <div className="space-y-4 mb-6">
+                        <select value={form.kelas} onChange={e=>setForm({...form, kelas: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm">
+                            <option value="">-- Pilih Kelas --</option>
+                            <option value="Kelas 1 SD (Fase A)">Kelas 1 SD (Fase A)</option>
+                            <option value="Kelas 2 SD (Fase A)">Kelas 2 SD (Fase A)</option>
+                            <option value="Kelas 3 SD (Fase B)">Kelas 3 SD (Fase B)</option>
+                            <option value="Kelas 4 SD (Fase B)">Kelas 4 SD (Fase B)</option>
+                            <option value="Kelas 5 SD (Fase C)">Kelas 5 SD (Fase C)</option>
+                            <option value="Kelas 6 SD (Fase C)">Kelas 6 SD (Fase C)</option>
+                            <option value="Kelas 7 SMP (Fase D)">Kelas 7 SMP (Fase D)</option>
+                            <option value="Kelas 8 SMP (Fase D)">Kelas 8 SMP (Fase D)</option>
+                            <option value="Kelas 9 SMP (Fase D)">Kelas 9 SMP (Fase D)</option>
+                            <option value="Kelas 10 SMA/SMK (Fase E)">Kelas 10 SMA/SMK (Fase E)</option>
+                            <option value="Kelas 11 SMA/SMK (Fase F)">Kelas 11 SMA/SMK (Fase F)</option>
+                            <option value="Kelas 12 SMA/SMK (Fase F)">Kelas 12 SMA/SMK (Fase F)</option>
+                        </select>
+                        <input type="text" value={form.mapel} onChange={e=>setForm({...form, mapel: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Mata Pelajaran (Cth: Biologi)" />
+                        <textarea rows="3" value={form.materi} onChange={e=>setForm({...form, materi: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Kata Kunci / Topik Pokok (Cth: Sistem Pernapasan Manusia)"></textarea>
+                    </div>
+                    
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-md transition-all ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg transform hover:-translate-y-0.5'}`}>
+                        {loading ? <><Loader2 size={18} className="animate-spin"/> Menyusun Materi...</> : <><Wand2 size={18}/> Generate Materi Komprehensif</>}
+                    </button>
+                    {!schoolConfig?.geminiApiKey && <p className="text-xs text-red-500 mt-3 text-center">Gemini API Key belum diatur!</p>}
+                </div>
+
+                <div className="w-2/3 flex flex-col bg-slate-50">
+                    <div className="bg-white rounded-t-xl border border-b-0 p-3 flex justify-between items-center shadow-sm">
+                        <h2 className="font-bold text-slate-700"><FileText size={18} className="inline text-emerald-500 mr-2"/> Preview Materi Ajar</h2>
+                        {generatedHtml && <button onClick={handlePrint} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Printer size={16} /> Cetak / PDF</button>}
+                    </div>
+                    <div className="p-8 bg-slate-200 flex-1 overflow-y-auto">
+                        {loading ? <div className="flex flex-col items-center justify-center h-full text-emerald-600 animate-pulse"><BookOpen size={64} className="mb-4 opacity-50" /><p className="font-bold">AI sedang menyusun buku materi lengkap...</p></div> : 
+                        generatedHtml ? <div className="bg-white shadow-xl max-w-[21cm] mx-auto text-black p-10 min-h-[29.7cm]"><div ref={printRef} dangerouslySetInnerHTML={{ __html: generatedHtml }}></div></div> : 
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20"><p className="font-medium">Isi identitas topik materi lalu klik Generate.</p></div>}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
     const [form, setForm] = useState({ kelas: '', mapel: '', materi: '', alokasiWaktu: '2 x 45 Menit' });
     const [loading, setLoading] = useState(false);
@@ -2798,6 +2948,7 @@ export default function App() {
                     {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
                     {activeTab === 'modul-ai' && <GenerateRPP schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'soal-ai' && <GenerateSoal schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
+                    {activeTab === 'materi-ai' && <GenerateMateri schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'monitoring' && <MonitoringGuru teacherAttendance={teacherAttendance || []} classLogs={classLogs || []} schedules={schedules || []} jurnals={jurnals || []} teachers={teachers || []} />}
                     {activeTab === 'monitoring-perangkat' && <MonitoringPerangkat perangkatLogs={perangkatLogs || []} />}
                     {activeTab === 'analisis-siswa' && <AnalisisSiswa classes={classes || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} schedules={schedules || []} user={user} isWaliKelas={isWaliKelas} managedClass={managedClass} isManagement={isManagement} />}
