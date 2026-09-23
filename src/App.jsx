@@ -1299,18 +1299,10 @@ const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, pera
             base64Data: base64Data
         };
 
-        try {
-            const response = await fetch(schoolConfig.gasUrl, { method: 'POST', body: JSON.stringify(payload) });
-            const result = await response.json();
-            if (result.status === 'success') return result.url;
-            throw new Error(result.message || 'Error dari GAS');
-        } catch (e) {
-            console.warn("Info GAS Upload:", e);
-            // Browser mungkin memblokir response JSON karena CORS, padahal file SEBENARNYA SUDAH TERKIRIM ke Drive.
-            // Untuk mencegah notifikasi gagal & Firebase Error (karena Base64 terlalu besar),
-            // kita kembalikan link Folder Drive saja agar panitia bisa mengunduhnya langsung dari folder tersebut.
-            return `https://drive.google.com/drive/folders/${folderId}`;
-        }
+        const response = await fetch(schoolConfig.gasUrl, { method: 'POST', body: JSON.stringify(payload) });
+        const result = await response.json();
+        if (result.status === 'success') return result.url;
+        throw new Error(result.message || 'Error dari GAS');
     };
 
     const handleConfirmUpload = async () => {
@@ -2693,6 +2685,7 @@ Instruksi Format:
 };
 
 const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToast }) => {
+    const [previewLink, setPreviewLink] = useState(null);
     const logsByTeacher = (perangkatLogs || []).reduce((acc, log) => {
         if (!acc[log.teacherName]) acc[log.teacherName] = [];
         acc[log.teacherName].push(log);
@@ -2713,8 +2706,45 @@ const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToa
         });
     };
 
+    const handlePreviewClick = (link) => {
+        let finalLink = link;
+        if (link.includes('drive.google.com')) {
+            if (link.includes('/folders/')) {
+                const folderIdMatch = link.match(/\/folders\/([\w-]+)/);
+                if (folderIdMatch) finalLink = `https://drive.google.com/embeddedfolderview?id=${folderIdMatch[1]}#grid`;
+            } else if (link.includes('/file/d/')) {
+                finalLink = link.replace(/\/view.*/, '/preview');
+            }
+        }
+        setPreviewLink(finalLink);
+    };
+
     return (
         <div className="space-y-6 animate-fade-in relative">
+            {previewLink && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-2 md:p-6">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-down">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Eye size={18} className="text-indigo-600"/> Preview Dokumen Ujian
+                                {previewLink?.includes('embeddedfolderview') && (
+                                    <span className="ml-2 text-[10px] md:text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 shadow-sm hidden sm:inline-block">
+                                        Mode Folder
+                                    </span>
+                                )}
+                            </h3>
+                            <div className="flex gap-3">
+                                <a href={previewLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-sm font-bold flex items-center gap-1"><ExternalLink size={16}/> Buka Tab Baru</a>
+                                <button onClick={() => setPreviewLink(null)} className="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1 shadow-sm"><X size={20} /></button>
+                            </div>
+                        </div>
+                        <div className="flex-1 w-full bg-slate-200">
+                            <iframe src={previewLink} className="w-full h-full border-0" title="Preview Dokumen"></iframe>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
                 <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Activity size={32} /></div>
                 <div>
@@ -2740,9 +2770,9 @@ const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToa
                                                 <p className="text-[10px] text-slate-400 font-medium">{new Date(log.timestamp).toLocaleString('id-ID')}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <a href={log.link} download={`Berkas_${name}_${log.type.replace(/\s+/g, '_')}`} className="shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border border-blue-100">
-                                                    <ExternalLink size={14} /> Unduh
-                                                </a>
+                                                <button onClick={() => handlePreviewClick(log.link)} className="shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border border-blue-100 cursor-pointer">
+                                                    <Eye size={14} /> Preview
+                                                </button>
                                                 <button onClick={() => handleDeleteLog(log.id, name, log.type)} className="shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors border border-red-100 opacity-50 hover:opacity-100" title="Hapus Log">
                                                     <Trash2 size={16} />
                                                 </button>
