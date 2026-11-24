@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft, Shield, HeartHandshake, ExternalLink, Wand2, Printer, Bot, PlayCircle } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link as LinkIcon, Wifi, BrainCircuit, FileBadge, Loader2, CalendarDays, Flag, Megaphone, Tent, ArrowLeft, Shield, HeartHandshake, ExternalLink, Wand2, Printer, Bot, PlayCircle, Filter } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+
 // --- FIREBASE INITIALIZATION ---
 let parsedConfig;
 try {
@@ -55,7 +56,8 @@ const INITIAL_SCHOOL_CONFIG = {
     link_kisi_sts_gasal: '', link_kisi_sts_genap: '', link_soal_sts_gasal: '', link_soal_sts_genap: '', 
     link_kisi_sas: '', link_kisi_sat: '', link_soal_sas: '', link_soal_sat: '', 
     link_kisi_psaj_praktik: '', link_kisi_psaj_tulis: '', link_soal_psaj_praktik: '', link_soal_psaj_tulis: '',
-    pekan_efektif_gasal: '18', pekan_efektif_genap: '16'
+    pekan_efektif_gasal: '18', pekan_efektif_genap: '16',
+    gasUrl: 'https://script.google.com/macros/s/AKfycbw21YLVzDqet4uiQiFE0quqR6iJLGEdgrgVfEFGJ4GVU6R3mN9if1ZqGRdtfF6FinA/exec'
 };
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -88,7 +90,7 @@ const calculateJamTime = (jamKeString) => {
 };
 
 // --- HOOK FIREBASE AMAN ---
-const useFirebaseData = (docId, initialValue, fbUser, onLoaded, collectionScope = 'master_data') => {
+const useFirebaseData = (docId, initialValue, fbUser, onLoaded) => {
     const [data, setData] = useState(initialValue);
     const [loading, setLoading] = useState(true);
     const dataRef = useRef(data);
@@ -100,11 +102,10 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded, collectionScope 
 
     useEffect(() => {
         if (!fbUser) return;
-        const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', collectionScope, docId);
+        const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
         const unsubscribe = onSnapshot(docRef, (snap) => {
             if (snap.exists()) {
                 let items = snap.data().items || initialValue;
-                // Filter jadwal duplikat sebelum menyimpannya ke state
                 if (docId === 'schedules' && Array.isArray(items)) {
                     const seen = new Set();
                     items = items.filter(s => {
@@ -135,13 +136,12 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded, collectionScope 
             }
         });
         return () => unsubscribe();
-    }, [fbUser, docId, collectionScope]);
+    }, [fbUser, docId]);
 
     const saveData = async (newDataAction) => {
         if (!fbUser) return;
         try {
             let valueToStore = typeof newDataAction === 'function' ? newDataAction(dataRef.current) : newDataAction;
-            // Filter jadwal duplikat sebelum menyimpannya ke Firebase
             if (docId === 'schedules' && Array.isArray(valueToStore)) {
                 const seen = new Set();
                 valueToStore = valueToStore.filter(s => {
@@ -152,7 +152,7 @@ const useFirebaseData = (docId, initialValue, fbUser, onLoaded, collectionScope 
                 });
             }
             setData(valueToStore); 
-            const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', collectionScope, docId);
+            const docRef = doc(db, 'artifacts', globalAppId, 'public', 'data', 'master_data', docId);
             await setDoc(docRef, { items: valueToStore }, { merge: true }); 
         } catch (error) {
             console.error("Failed to save:", error);
@@ -232,14 +232,14 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
                             <span className="text-[10px] md:text-xs text-slate-500 font-medium leading-none mt-0.5">NPSN: {schoolConfig?.npsn || '-'}</span>
                         </div>
                     </div>
-                    <button onClick={onNavigateLogin} className="px-5 py-2.5 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 transform hover:-translate-y-0.5" style={{ background: 'linear-gradient(to right, #4f46e5, #9333ea)' }}>
+                    <button onClick={onNavigateLogin} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold rounded-xl shadow-lg border border-indigo-700 transition-all flex items-center gap-2 transform hover:-translate-y-0.5" style={{ backgroundColor: '#4f46e5', color: '#ffffff' }}>
                         <LogIn size={16} /> <span className="hidden sm:inline">Masuk Portal</span><span className="sm:hidden">Masuk</span>
                     </button>
                 </div>
             </header>
 
             <main className="flex-1 flex flex-col">
-                <section className="relative pt-20 pb-32 flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex-1">
+                <section className="relative pt-20 pb-32 flex items-center justify-center overflow-hidden bg-slate-50 flex-1">
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
                         <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-indigo-200/40 blur-3xl"></div>
                         <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-200/40 blur-3xl"></div>
@@ -249,7 +249,7 @@ const LandingPage = ({ schoolConfig, onNavigateLogin }) => {
                             <Activity size={14} className="text-indigo-500"/> Transformasi Digital Sekolah
                         </div>
                         <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
-                            Sistem Jurnal & Administrasi <br className="hidden md:block"/> <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, #4f46e5, #9333ea)' }}>Guru Mengajar (SIJAGA)</span>
+                            Sistem Jurnal & Administrasi <br className="hidden md:block"/> <span className="text-indigo-600 font-extrabold">Guru Mengajar (SIJAGA)</span>
                         </h1>
                         <p className="mt-4 text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
                             Platform terpadu untuk {schoolConfig?.name || 'sekolah Anda'} yang memudahkan pemantauan kelas, pengisian presensi siswa, dan kelengkapan administrasi guru secara real-time.
@@ -393,7 +393,7 @@ const KebutuhanKBMGuru = ({ schoolDocs, isPiket }) => {
                 </div>
 
                 {isPiket && (
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.vercel.app/', '_blank')}>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md hover:border-orange-300 cursor-pointer group" onClick={() => window.open('https://sigapaltaz.web.app/', '_blank')}>
                         <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield size={28} /></div>
                         <h3 className="font-bold text-slate-800 text-lg mb-1">SIGAP (Piket)</h3>
                         <p className="text-xs text-slate-500 mb-4">Jurnal & Laporan Guru Piket</p>
@@ -429,18 +429,18 @@ const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig, onBack }) => 
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 font-sans selection:bg-indigo-100 selection:text-indigo-700 relative">
-            <button onClick={onBack} className="absolute top-4 left-4 md:top-6 md:left-6 text-white/80 hover:text-white flex items-center gap-2 text-sm font-bold transition-colors z-20 bg-black/10 hover:bg-black/30 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
+        <div className="min-h-screen bg-indigo-600 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 font-sans selection:bg-indigo-100 selection:text-indigo-700 relative" style={{ backgroundColor: '#4f46e5' }}>
+            <button onClick={onBack} className="absolute top-4 left-4 md:top-6 md:left-6 text-white font-bold flex items-center gap-2 text-sm transition-colors z-20 bg-slate-900/80 hover:bg-slate-900 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-700 shadow-md">
                 <ArrowLeft size={16} /> Kembali
             </button>
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300 mx-auto z-10 relative mt-12 md:mt-0">
-                <div className="p-8 md:p-10 text-center relative overflow-hidden" style={{ background: 'linear-gradient(to right, #4f46e5, #9333ea)' }}>
-                    <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-20 transform -skew-y-6 scale-150 origin-bottom-left"></div>
-                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner relative z-10 overflow-hidden p-1">
+                <div className="bg-indigo-600 bg-gradient-to-r from-indigo-600 to-purple-600 p-8 md:p-10 text-center relative overflow-hidden text-white" style={{ backgroundColor: '#4f46e5' }}>
+                    <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-20 transform -skew-y-6 scale-150 origin-bottom-left pointer-events-none"></div>
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner relative z-10 overflow-hidden p-1 border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                         {schoolConfig?.logo ? <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover rounded-xl" /> : <School size={40} className="text-white drop-shadow-md" />}
                     </div>
                     <h1 className="text-2xl md:text-3xl font-bold text-white relative z-10 tracking-tight">{schoolConfig?.name || 'SIJAGA'}</h1>
-                    <p className="text-white/90 text-[10px] md:text-xs mt-1.5 relative z-10 font-medium leading-tight uppercase tracking-wider">
+                    <p className="text-indigo-100 text-[10px] md:text-xs mt-1.5 relative z-10 font-bold opacity-90 leading-tight uppercase tracking-wider">
                         Sistem Jurnal & Administrasi<br/>Guru Mengajar
                     </p>
                 </div>
@@ -468,7 +468,7 @@ const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig, onBack }) => 
                                 <span className="font-medium">{error}</span>
                             </div>
                         )}
-                        <button type="submit" className="w-full text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2" style={{ background: 'linear-gradient(to right, #4f46e5, #9333ea)' }}>
+                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 border border-indigo-700 cursor-pointer" style={{ backgroundColor: '#4f46e5', color: '#ffffff' }}>
                             <LogIn size={20} /> Masuk Aplikasi
                         </button>
                     </form>
@@ -511,7 +511,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
                         const visibleItems = group.items.filter(item => {
                             if (item.id === 'jurnal-piket') return isPiket;
                             if (item.id === 'monitoring') return isManagement; 
-                            if (item.id === 'monitoring-ujian') return isPanitiaUjian || user.role === 'admin';
+                            if (item.id === 'monitoring-ujian') return isPanitiaUjian || user.role === 'admin' || isManagement;
                             if (item.id === 'analisis-siswa') return (user.role === 'admin' || isManagement || isWaliKelas);
                             return item.roles.includes(user.role);
                         });
@@ -522,10 +522,10 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
                                 <nav className="space-y-1.5">
                                     {visibleItems.map((item) => (
                                         <button key={item.id} onClick={() => { 
-                                            if (item.id === 'jurnal-piket') {
-                                                window.open('https://sigapaltaz.vercel.app/', '_blank');
-                                            } else if (item.id === 'asesmen') {
-                                                window.open('https://erapor-zeta.vercel.app', '_blank');
+                                            if (item.id === 'asesmen') {
+                                                window.open('https://erapor-zeta.vercel.app/', '_blank');
+                                            } else if (item.id === 'jurnal-piket') {
+                                                window.open('https://sigapaltaz.web.app/', '_blank');
                                             } else {
                                                 setActiveTab(item.id); 
                                                 setIsOpen(false); 
@@ -553,7 +553,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, i
 // --- KOMPONEN FITUR UTAMA ---
 const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs, setClassLogs, teacherAttendance, schedules, jurnals, showToast, isManagement }) => {
     const today = new Date();
-    const todayISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const todayISO = today.toISOString().split('T')[0];
     const todayLocale = today.toLocaleDateString('id-ID');
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const activeDay = days[today.getDay()];
@@ -591,7 +591,7 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
                     action: () => handleMasukKelas(sch) 
                 });
             }
-            const hasJournal = (jurnals || []).some(j => (j.scheduleId === sch.id || (j.subject === sch.subject && j.class === sch.class)) && j.date === todayLocale);
+            const hasJournal = (jurnals || []).some(j => j.scheduleId === sch.id && j.date === todayLocale);
             if (!hasJournal) {
                 pendingTasks.push({ id: `jurnal-${sch.id}`, title: `Isi Jurnal ${sch.class}`, desc: `${sch.subject} - ${sch.time || '00:00'}`, type: 'info', link: 'jurnal', btnText: 'Isi Jurnal' });
             }
@@ -625,10 +625,10 @@ const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs
                 </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Total Siswa" value={studentsCount} icon={Users} color="bg-gradient-to-br from-blue-500 to-blue-600" />
-                <StatCard title="Total Guru" value={teachersCount} icon={UserCog} color="bg-gradient-to-br from-pink-500 to-pink-600" />
-                <StatCard title="Total Kelas" value="5" icon={LayoutDashboard} color="bg-gradient-to-br from-emerald-500 to-emerald-600" />
-                {user.role === 'guru' && <StatCard title="Jam Mengajar" value="24 JP" icon={Calendar} color="bg-gradient-to-br from-orange-500 to-orange-600" />}
+                <StatCard title="Total Siswa" value={studentsCount} icon={Users} color="bg-blue-600 bg-gradient-to-br from-blue-500 to-blue-600" />
+                <StatCard title="Total Guru" value={teachersCount} icon={UserCog} color="bg-pink-600 bg-gradient-to-br from-pink-500 to-pink-600" />
+                <StatCard title="Total Kelas" value="5" icon={LayoutDashboard} color="bg-emerald-600 bg-gradient-to-br from-emerald-500 to-emerald-600" />
+                {user.role === 'guru' && <StatCard title="Jam Mengajar" value="24 JP" icon={Calendar} color="bg-orange-600 bg-gradient-to-br from-orange-500 to-orange-600" />}
             </div>
             {user.role === 'guru' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -738,8 +738,7 @@ const KalenderAkademik = ({ calendarEvents, schoolConfig }) => {
 const AbsensiGuru = ({ user, teacherAttendance, setTeacherAttendance, classLogs, setClassLogs, schedules, showToast }) => {
     const [status, setStatus] = useState('idle'); 
     const [location, setLocation] = useState(null);
-    const currentDate = new Date();
-    const today = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
     const isPresent = (teacherAttendance || []).find(a => a.teacherName === user.name && a.date === today);
     
     const getAddressName = async (latitude, longitude) => {
@@ -1068,7 +1067,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div><div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={(e) => { setSelectedDate(new Date(e.target.value)); setSelectedSchedule(null); }} className="bg-white border rounded-lg focus:ring-blue-500 p-2.5 outline-none font-bold" /><button onClick={handleDownloadPDF} className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center gap-2 font-bold transition-colors"><Download size={18} /> PDF</button></div></div>
             {!selectedSchedule ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {(schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).map(item => {
@@ -1118,7 +1117,7 @@ const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jur
                         setJurnals(p => {
                             const updated = [...(p || [])];
                             const idx = updated.findIndex(j => j.scheduleId === selectedSchedule.id && j.date === dateStr);
-                            const journalData = { ...selectedSchedule, scheduleId: selectedSchedule.id, ...form, date: dateStr, teacherName: user.name, absentStudents: getAbsentStudents(selectedSchedule.class) };
+                            const journalData = { ...selectedSchedule, ...form, date: dateStr, teacherName: user.name, absentStudents: getAbsentStudents(selectedSchedule.class) };
                             if(idx > -1) { updated[idx] = { ...updated[idx], ...journalData }; } 
                             else { updated.push({ ...journalData, id: Date.now() }); }
                             return updated;
@@ -1219,8 +1218,8 @@ const MonitoringPerangkat = ({ perangkatLogs }) => {
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <a href={log.link} download={`Berkas_${log.teacherName}_${log.type.replace(/\s+/g, '_')}`} className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shadow-sm">
-                                            <LinkIcon size={14}/> Unduh Berkas
+                                        <a href={log.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shadow-sm">
+                                            <LinkIcon size={14}/> Buka Berkas
                                         </a>
                                     </td>
                                 </tr>
@@ -1238,192 +1237,394 @@ const MonitoringPerangkat = ({ perangkatLogs }) => {
     );
 };
 
-const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, perangkatLogs, setPerangkatLogs }) => {
+const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, perangkatLogs, setPerangkatLogs, classes = [], showConfirm, teachers = [], subjects = [] }) => {
     const [uploadModal, setUploadModal] = useState(null);
     const [fileLink, setFileLink] = useState('');
-    const [selectedMapel, setSelectedMapel] = useState('');
-    const [fileName, setFileName] = useState('');
-    
-    // Untuk berkas kedua (Pedoman)
-    const [fileLink2, setFileLink2] = useState('');
-    const [fileName2, setFileName2] = useState('');
-
+    const [selectedKelas, setSelectedKelas] = useState('');
+    const [mapel, setMapel] = useState('');
+    const [uploadedFile, setUploadedFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [previewLink, setPreviewLink] = useState(null);
+
+    // Ambil daftar mata pelajaran guru dari profil guru di Manajemen Data
+    const teacherSubjects = useMemo(() => {
+        const currentT = (teachers || []).find(t => t.name === user?.name || (user?.teacherId && t.id === user.teacherId));
+        const raw = currentT?.mapel || user?.mapel || '';
+        if (raw && raw.trim()) {
+            return raw
+                .split(/[,/;&\n]+/)
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+        if (subjects && subjects.length > 0) {
+            return subjects.map(s => (typeof s === 'object' ? s.name : s)).filter(Boolean);
+        }
+        return [];
+    }, [teachers, user, subjects]);
 
     const handleOpenModal = (menu) => {
         setUploadModal(menu);
         setFileLink('');
-        setFileName('');
-        setFileLink2('');
-        setFileName2('');
-        setSelectedMapel('');
-    };
-
-    const handleFileChange = (e, index = 1) => {
-        const file = e.target.files[0];
-        if (!file) {
-            if (index === 1) { setFileLink(''); setFileName(''); }
-            else { setFileLink2(''); setFileName2(''); }
-            return;
+        setUploadedFile(null);
+        setIsUploading(false);
+        const defaultClass = classes && classes.length > 0 ? (typeof classes[0] === 'object' ? classes[0].name : classes[0]) : '';
+        setSelectedKelas(defaultClass || '');
+        if (teacherSubjects && teacherSubjects.length > 0) {
+            setMapel(teacherSubjects[0]);
+        } else {
+            setMapel('');
         }
-        if (index === 1) setFileName(file.name);
-        else setFileName2(file.name);
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            if (index === 1) setFileLink(reader.result);
-            else setFileLink2(reader.result);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const extractFolderId = (url) => {
-        if (!url) return null;
-        const match = url.match(/(?:folders\/|id=)([\w-]+)/);
-        return match ? match[1] : null;
-    };
-
-    const uploadToGAS = async (base64Link, nameOfFile, typeLabel) => {
-        if (!schoolConfig?.gasUrl || !uploadModal?.driveLink) return base64Link;
-        const folderId = extractFolderId(uploadModal.driveLink);
-        if (!folderId) return base64Link;
-
-        const mimeTypeMatch = base64Link.match(/data:([a-zA-Z0-9-+\/.]+);base64,/);
-        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'application/octet-stream';
-        const base64Data = base64Link.split(',')[1];
-        
-        const payload = {
-            folderId: folderId,
-            filename: `[${user.name}] ${selectedMapel} - ${typeLabel} - ${nameOfFile}`,
-            mimeType: mimeType,
-            base64Data: base64Data
-        };
-
-        const response = await fetch(schoolConfig.gasUrl, { method: 'POST', body: JSON.stringify(payload) });
-        const result = await response.json();
-        if (result.status === 'success') return result.url;
-        throw new Error(result.message || 'Error dari GAS');
     };
 
     const handleConfirmUpload = async () => {
-        if (!selectedMapel.trim()) {
-            showToast('Mohon masukkan mata pelajaran.', 'error');
+        if (!selectedKelas) {
+            showToast('Mohon pilih Kelas terlebih dahulu!', 'error');
             return;
         }
-        if (!fileLink.trim()) {
-            showToast('Mohon pilih berkas pertama (Kisi-Kisi/Soal).', 'error');
+        if (!mapel || !mapel.trim()) {
+            showToast('Mohon pilih Mata Pelajaran!', 'error');
             return;
         }
-        if (uploadModal.prefix === 'KISI' && !fileLink2.trim()) {
-            showToast('Mohon pilih berkas Pedoman Penilaian.', 'error');
+        if (!uploadedFile && !fileLink.trim()) {
+            showToast('Mohon pilih 1 berkas file yang akan diunggah!', 'error');
             return;
         }
 
         setIsUploading(true);
-        try {
-            showToast('Sedang memproses unggahan...', 'info');
-            
-            // Upload berkas 1 (Kisi / Soal)
-            let finalLink1 = await uploadToGAS(fileLink, fileName, uploadModal.prefix);
-            const logsToAdd = [{
-                id: Date.now().toString(),
-                teacherName: user.name,
-                type: `${uploadModal.prefix} - ${uploadModal.title.replace('KISI & PEDOMAN', 'KISI-KISI')} ${uploadModal.desc} (${selectedMapel})`,
-                link: finalLink1,
-                timestamp: Date.now()
-            }];
 
-            // Upload berkas 2 (Pedoman) jika ada
-            if (uploadModal.prefix === 'KISI' && fileLink2) {
-                let finalLink2 = await uploadToGAS(fileLink2, fileName2, 'PEDOMAN');
-                logsToAdd.push({
-                    id: (Date.now() + 1).toString(),
-                    teacherName: user.name,
-                    type: `PEDOMAN - ${uploadModal.title.replace('KISI & PEDOMAN', 'PEDOMAN PENILAIAN')} ${uploadModal.desc} (${selectedMapel})`,
-                    link: finalLink2,
-                    timestamp: Date.now() + 1
+        try {
+            const gasUrl = (schoolConfig?.gasUrl && schoolConfig.gasUrl.trim()) 
+                ? schoolConfig.gasUrl.trim() 
+                : 'https://script.google.com/macros/s/AKfycbw21YLVzDqet4uiQiFE0quqR6iJLGEdgrgVfEFGJ4GVU6R3mN9if1ZqGRdtfF6FinA/exec';
+
+            let finalLink = fileLink.trim();
+
+            if (uploadedFile) {
+                // Ekstrak folder ID dari link drive tujuan jika tersedia
+                let folderId = '';
+                if (uploadModal.driveLink) {
+                    const m = uploadModal.driveLink.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+                    if (m) folderId = m[1];
+                }
+
+                // Konversi file ke format Base64
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const res = reader.result;
+                        const b64 = typeof res === 'string' && res.includes(',') ? res.split(',')[1] : res;
+                        resolve(b64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(uploadedFile);
                 });
+
+                const cleanFileName = `[${selectedKelas}] ${mapel.trim()} - ${uploadModal.title} - ${user.name} - ${uploadedFile.name}`;
+
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            folderId: folderId,
+                            filename: cleanFileName,
+                            mimeType: uploadedFile.type || 'application/octet-stream',
+                            base64Data: base64Data,
+                            teacherName: user.name,
+                            mapel: mapel.trim(),
+                            kelas: selectedKelas,
+                            type: uploadModal.title
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.status === 'success' && result.url) {
+                        finalLink = result.url;
+                    } else {
+                        throw new Error(result.message || 'Gagal menyimpan file ke Google Drive');
+                    }
+                } catch (gasErr) {
+                    console.warn('Upload GAS Error:', gasErr);
+                    if (!finalLink) {
+                        if (uploadedFile.size < 300 * 1024) {
+                            finalLink = `data:${uploadedFile.type || 'application/pdf'};base64,${base64Data}`;
+                        } else {
+                            finalLink = uploadModal.driveLink || uploadedFile.name;
+                        }
+                    }
+                    showToast('Catatan: Upload GAS terkendala. Berkas tetap disimpan.', 'info');
+                }
             }
 
-            await setPerangkatLogs(prev => [...logsToAdd, ...(prev || [])]);
-            showToast('Berhasil mengunggah berkas!', 'success');
+            const baseCategory = uploadModal.category || (uploadModal.title.includes('STS') ? 'STS' : uploadModal.title.includes('SAS') ? 'SAS' : uploadModal.title.includes('SAT') ? 'SAT' : 'PSAJ');
+            const isKisi = uploadModal.prefix === 'KISI';
+            const titlePrefix = isKisi ? 'KISI & KARSO' : 'SOAL';
+
+            const newLog = {
+                id: Date.now().toString(),
+                teacherName: user.name,
+                mapel: mapel.trim(),
+                category: baseCategory,
+                prefix: uploadModal.prefix,
+                title: `${titlePrefix} - ${uploadModal.title}`,
+                targetClass: selectedKelas,
+                type: `${titlePrefix} - ${uploadModal.title}${uploadModal.desc ? ` ${uploadModal.desc}` : ''} - ${mapel.trim()} (${selectedKelas})`,
+                link: finalLink || uploadModal.driveLink || '#',
+                fileName: uploadedFile ? uploadedFile.name : (fileLink.trim() ? 'Link Google Drive' : 'Dokumen Ujian'),
+                timestamp: Date.now()
+            };
+
+            await setPerangkatLogs(prev => [newLog, ...(prev || [])]);
+            showToast('Berhasil mengunggah berkas! Data otomatis muncul di Monitoring Ujian.', 'success');
             setUploadModal(null);
         } catch (err) {
             console.error(err);
-            showToast('Gagal mengunggah: ' + err.message, 'error');
+            showToast('Gagal menyimpan log: ' + err.message, 'error');
         } finally {
             setIsUploading(false);
         }
     };
 
+    const handleDeleteMyLog = (logId, logType) => {
+        const doDelete = async () => {
+            try {
+                await setPerangkatLogs(prev => prev.filter(log => log.id !== logId));
+                showToast('Berkas riwayat berhasil dihapus!', 'success');
+            } catch (err) {
+                showToast('Gagal menghapus berkas.', 'error');
+            }
+        };
+
+        if (showConfirm) {
+            showConfirm(`Apakah Anda yakin ingin menghapus unggahan ${logType}? File yang tersimpan otomatis akan ikut terhapus.`, doDelete);
+        } else if (window.confirm(`Hapus unggahan ${logType}?`)) {
+            doDelete();
+        }
+    };
+
+    const handlePreviewClick = (link) => {
+        if (!link || link === '#') {
+            showToast('Tidak ada tautan atau pratinjau untuk berkas ini.', 'info');
+            return;
+        }
+        let finalLink = link;
+        if (link.includes('drive.google.com')) {
+            if (link.includes('/folders/')) {
+                const folderIdMatch = link.match(/\/folders\/([\w-]+)/);
+                if (folderIdMatch) finalLink = `https://drive.google.com/embeddedfolderview?id=${folderIdMatch[1]}#grid`;
+            } else if (link.includes('/file/d/')) {
+                finalLink = link.replace(/\/view.*/, '/preview');
+            }
+        }
+        setPreviewLink(finalLink);
+    };
+
     const menuGasal = [
-        { id: 'sts_kisi_gasal', title: 'KISI & PEDOMAN STS', desc: 'GASAL', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_gasal, col: 'bg-blue-100 text-blue-600' },
-        { id: 'sts_soal_gasal', title: 'SOAL / PRAKTIK STS', desc: 'GASAL', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_gasal, col: 'bg-indigo-100 text-indigo-600' },
-        { id: 'sas_kisi', title: 'KISI & PEDOMAN SAS', desc: 'GASAL', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sas, col: 'bg-cyan-100 text-cyan-600' },
-        { id: 'sas_soal', title: 'SOAL SAS', desc: 'GASAL', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sas, col: 'bg-sky-100 text-sky-600' },
+        { id: 'sts_kisi_gasal', title: 'KISI & PEDOMAN STS', desc: 'GASAL', prefix: 'KISI', category: 'STS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_gasal, col: 'bg-blue-100 text-blue-600' },
+        { id: 'sts_soal_gasal', title: 'SOAL / PRAKTIK STS', desc: 'GASAL', prefix: 'SOAL', category: 'STS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_gasal, col: 'bg-indigo-100 text-indigo-600' },
+        { id: 'sas_kisi', title: 'KISI & PEDOMAN SAS', desc: 'GASAL', prefix: 'KISI', category: 'SAS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sas, col: 'bg-cyan-100 text-cyan-600' },
+        { id: 'sas_soal', title: 'SOAL SAS', desc: 'GASAL', prefix: 'SOAL', category: 'SAS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sas, col: 'bg-sky-100 text-sky-600' },
     ];
 
     const menuGenap = [
-        { id: 'sts_kisi_genap', title: 'KISI & PEDOMAN STS', desc: 'GENAP', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_genap, col: 'bg-emerald-100 text-emerald-600' },
-        { id: 'sts_soal_genap', title: 'SOAL / PRAKTIK STS', desc: 'GENAP', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_genap, col: 'bg-teal-100 text-teal-600' },
-        { id: 'sat_kisi', title: 'KISI & PEDOMAN SAT', desc: 'GENAP', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sat, col: 'bg-green-100 text-green-600' },
-        { id: 'sat_soal', title: 'SOAL SAT', desc: 'GENAP', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sat, col: 'bg-lime-100 text-lime-600' },
+        { id: 'sts_kisi_genap', title: 'KISI & PEDOMAN STS', desc: 'GENAP', prefix: 'KISI', category: 'STS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sts_genap, col: 'bg-emerald-100 text-emerald-600' },
+        { id: 'sts_soal_genap', title: 'SOAL / PRAKTIK STS', desc: 'GENAP', prefix: 'SOAL', category: 'STS', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sts_genap, col: 'bg-teal-100 text-teal-600' },
+        { id: 'sat_kisi', title: 'KISI & PEDOMAN SAT', desc: 'GENAP', prefix: 'KISI', category: 'SAT', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_kisi_sat, col: 'bg-green-100 text-green-600' },
+        { id: 'sat_soal', title: 'SOAL SAT', desc: 'GENAP', prefix: 'SOAL', category: 'SAT', driveLink: teacherDriveLinks?.[user?.id]?.sas_sat || schoolConfig?.link_soal_sat, col: 'bg-lime-100 text-lime-600' },
     ];
 
     const menuPSAJ = [
-        { id: 'psaj_kisi_praktik', title: 'KISI & PEDOMAN PSAJ', desc: 'PRAKTIK', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_kisi_psaj_praktik, col: 'bg-orange-100 text-orange-600' },
-        { id: 'psaj_soal_praktik', title: 'SOAL / KEGIATAN PSAJ', desc: 'PRAKTIK', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_praktik, col: 'bg-amber-100 text-amber-600' },
-        { id: 'psaj_kisi_tulis', title: 'KISI & PEDOMAN PSAJ', desc: 'TULIS', prefix: 'KISI', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_kisi_psaj_tulis, col: 'bg-pink-100 text-pink-600' },
-        { id: 'psaj_soal_tulis', title: 'SOAL / KEGIATAN PSAJ', desc: 'TULIS', prefix: 'SOAL', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_tulis, col: 'bg-rose-100 text-rose-600' }
+        { id: 'psaj_kisi', title: 'KISI & PEDOMAN PSAJ', desc: '', prefix: 'KISI', category: 'PSAJ', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_kisi_psaj_praktik || schoolConfig?.link_kisi_psaj_tulis, col: 'bg-orange-100 text-orange-600' },
+        { id: 'psaj_soal_praktik', title: 'SOAL / KEGIATAN PSAJ', desc: 'PRAKTIK', prefix: 'SOAL', category: 'PSAJ', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_praktik, col: 'bg-amber-100 text-amber-600' },
+        { id: 'psaj_soal_tulis', title: 'SOAL / KEGIATAN PSAJ', desc: 'TULIS', prefix: 'SOAL', category: 'PSAJ', driveLink: teacherDriveLinks?.[user?.id]?.psaj || schoolConfig?.link_soal_psaj_tulis, col: 'bg-rose-100 text-rose-600' }
     ];
+
+    const myLogs = (perangkatLogs || []).filter(log => log.teacherName === user.name);
 
     return (
         <div className="space-y-8 animate-fade-in relative">
+            {previewLink && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-2 md:p-6 bg-slate-900/60 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-down border border-slate-200">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Eye size={18} className="text-indigo-600"/> Preview Dokumen Ujian
+                                {previewLink?.includes('embeddedfolderview') && (
+                                    <span className="ml-2 text-[10px] md:text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 shadow-sm hidden sm:inline-block">
+                                        Mode Folder
+                                    </span>
+                                )}
+                            </h3>
+                            <div className="flex gap-3">
+                                <a href={previewLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-sm font-bold flex items-center gap-1">
+                                    <ExternalLink size={16}/> Buka Tab Baru
+                                </a>
+                                <button onClick={() => setPreviewLink(null)} className="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1 shadow-sm">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 w-full bg-slate-200">
+                            <iframe src={previewLink} className="w-full h-full border-0" title="Preview Dokumen"></iframe>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {uploadModal && (
-                <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in-down">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-slate-800">Unggah Bukti Dokumen</h3>
-                            <button onClick={() => setUploadModal(null)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                <div className="fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4 bg-slate-900/60 backdrop-blur-xs">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 sm:p-7 animate-fade-in-down border border-slate-100 max-h-[92vh] overflow-y-auto">
+                        {/* Header Modal */}
+                        <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Unggah Bukti Dokumen</h3>
+                            <button onClick={() => setUploadModal(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
+                                <X size={22} />
+                            </button>
                         </div>
                         
                         <div className="space-y-4">
+                            {/* Field 1: Nama Guru */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Nama Guru</label>
-                                <input type="text" value={user.name} disabled className="w-full p-3 border border-slate-300 rounded-xl bg-slate-100 text-slate-600 font-bold outline-none cursor-not-allowed" />
+                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Nama Guru</label>
+                                <input 
+                                    type="text" 
+                                    readOnly 
+                                    value={user?.name || ''} 
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold text-sm outline-none cursor-not-allowed select-none" 
+                                />
                             </div>
 
+                            {/* Field 2: Mata Pelajaran (Dropdown sesuai mapel di Manajemen Data Guru) */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Mata Pelajaran</label>
-                                <input type="text" value={selectedMapel} onChange={e => setSelectedMapel(e.target.value)} placeholder="Contoh: Matematika" className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none" />
-                            </div>
-
-                            {uploadModal.prefix === 'KISI' ? (
-                                <>
-                                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                        <label className="block text-sm font-bold text-blue-800 mb-2">1. Unggah Berkas KISI-KISI</label>
-                                        <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={e => handleFileChange(e, 1)} className="w-full p-2 border border-blue-200 rounded-lg bg-white file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer" />
-                                        {fileLink && <p className="text-xs text-blue-700 font-bold mt-2 flex items-center gap-1"><CheckCircle size={14} /> {fileName}</p>}
-                                    </div>
-                                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-                                        <label className="block text-sm font-bold text-emerald-800 mb-2">2. Unggah PEDOMAN PENILAIAN</label>
-                                        <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={e => handleFileChange(e, 2)} className="w-full p-2 border border-emerald-200 rounded-lg bg-white file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer" />
-                                        {fileLink2 && <p className="text-xs text-emerald-700 font-bold mt-2 flex items-center gap-1"><CheckCircle size={14} /> {fileName2}</p>}
-                                    </div>
-                                </>
-                            ) : (
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Unggah Berkas (PDF/Word/Excel)</label>
-                                    <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={e => handleFileChange(e, 1)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
-                                    {fileLink && <p className="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1"><CheckCircle size={14} /> Berkas siap diunggah</p>}
+                                <div className="flex items-center justify-between mb-1.5 ml-1">
+                                    <label className="block text-xs font-bold text-slate-700">Mata Pelajaran</label>
+                                    {teacherSubjects.length > 1 && (
+                                        <span className="text-[10px] text-indigo-700 bg-indigo-50 font-bold px-2 py-0.5 rounded-full border border-indigo-100">
+                                            {teacherSubjects.length} Mapel Terdaftar
+                                        </span>
+                                    )}
                                 </div>
-                            )}
+                                {teacherSubjects.length > 0 ? (
+                                    <select 
+                                        value={mapel} 
+                                        onChange={e => setMapel(e.target.value)} 
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
+                                    >
+                                        <option value="">-- Pilih Mata Pelajaran --</option>
+                                        {teacherSubjects.map((subj, idx) => (
+                                            <option key={idx} value={subj}>{subj}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input 
+                                        type="text" 
+                                        value={mapel} 
+                                        onChange={e => setMapel(e.target.value)} 
+                                        placeholder="Ketik Mata Pelajaran (Cth: Matematika)" 
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 font-semibold text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
+                                    />
+                                )}
+                                {teacherSubjects.length > 0 && (
+                                    <p className="text-[10px] text-slate-400 mt-1 ml-1">
+                                        *Pilihan mapel diambil otomatis dari data guru Anda di Manajemen Data.
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Field 3: Kelas (Dropdown dari manajemen data) */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Kelas</label>
+                                <select 
+                                    value={selectedKelas} 
+                                    onChange={e => setSelectedKelas(e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                                >
+                                    <option value="">-- Pilih Kelas --</option>
+                                    {(classes || []).map((cls, idx) => {
+                                        const cName = typeof cls === 'object' ? cls.name : cls;
+                                        return <option key={idx} value={cName}>{cName}</option>;
+                                    })}
+                                    <option value="Semua Kelas">Semua Kelas</option>
+                                </select>
+                            </div>
+
+                            {/* Field 4: HANYA SATU FILE UNGGAH UNTUK SEMUA BAGIAN */}
+                            <div className={`${uploadModal.prefix === 'KISI' ? 'bg-blue-50/70 border-blue-200' : 'bg-emerald-50/70 border-emerald-200'} border rounded-2xl p-4 transition-all shadow-xs`}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <h4 className={`text-xs sm:text-sm font-bold ${uploadModal.prefix === 'KISI' ? 'text-blue-700' : 'text-emerald-800'}`}>
+                                        {uploadModal.prefix === 'KISI' ? 'Unggah Berkas KISI & KARSO / PEDOMAN' : 'Unggah Berkas SOAL / KEGIATAN'}
+                                    </h4>
+                                    <span className="text-[10px] bg-white font-bold px-2 py-0.5 rounded-full border border-slate-200 text-slate-600">
+                                        1 Berkas
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mb-2.5">
+                                    {uploadModal.prefix === 'KISI' 
+                                        ? 'Pilih 1 berkas Kisi-Kisi & Karso (Pedoman Penilaian) dalam format PDF, Word, atau Excel.' 
+                                        : 'Pilih 1 berkas Naskah Soal atau Lembar Kegiatan dalam format PDF, Word, atau Excel.'}
+                                </p>
+                                <div className={`bg-white border ${uploadModal.prefix === 'KISI' ? 'border-blue-200' : 'border-emerald-200'} rounded-xl p-1.5 flex items-center shadow-xs`}>
+                                    <input 
+                                        type="file" 
+                                        onChange={e => setUploadedFile(e.target.files[0] || null)} 
+                                        className={`w-full text-xs text-slate-700 file:mr-3 file:py-1.5 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-bold ${uploadModal.prefix === 'KISI' ? 'file:bg-blue-600 hover:file:bg-blue-700' : 'file:bg-emerald-600 hover:file:bg-emerald-700'} file:text-white cursor-pointer`} 
+                                    />
+                                </div>
+                                {uploadedFile && (
+                                    <div className="mt-2.5 p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs animate-fade-in shadow-xs">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+                                            <span className="font-bold text-slate-700 truncate">{uploadedFile.name}</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                            {(uploadedFile.size / 1024).toFixed(1)} KB
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Optional Link Input & Drive Shortcut */}
+                            <div className="pt-1">
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] font-semibold text-slate-500">Atau link Google Drive (Opsional jika file sudah di Drive):</label>
+                                    {uploadModal.driveLink && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => window.open(uploadModal.driveLink, '_blank')} 
+                                            className="text-[11px] text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                                        >
+                                            <Folder size={12} /> Buka Folder Drive
+                                        </button>
+                                    )}
+                                </div>
+                                <input 
+                                    type="text" 
+                                    value={fileLink} 
+                                    onChange={e => setFileLink(e.target.value)} 
+                                    placeholder="https://drive.google.com/..." 
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-400 transition-all font-mono" 
+                                />
+                            </div>
                         </div>
                         
-                        <div className="mt-8 flex justify-end gap-3">
-                            <button onClick={() => setUploadModal(null)} disabled={isUploading} className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors disabled:opacity-50">Batal</button>
-                            <button onClick={handleConfirmUpload} disabled={!fileLink || (uploadModal.prefix === 'KISI' && !fileLink2) || isUploading} className={`px-6 py-2.5 rounded-xl text-white font-bold transition-all flex items-center gap-2 ${(!fileLink || (uploadModal.prefix === 'KISI' && !fileLink2) || isUploading) ? 'bg-slate-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200'}`}>
-                                {isUploading ? <><Loader2 size={16} className="animate-spin" /> Mengunggah...</> : <><Save size={16} /> Konfirmasi</>}
+                        {/* Action Buttons: Batal & Konfirmasi */}
+                        <div className="mt-7 flex justify-center items-center gap-3">
+                            <button 
+                                type="button" 
+                                onClick={() => setUploadModal(null)} 
+                                disabled={isUploading}
+                                className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm border border-slate-200 transition-colors shadow-xs disabled:opacity-50"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={handleConfirmUpload} 
+                                disabled={isUploading}
+                                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm border border-indigo-700 shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                                style={{ backgroundColor: '#4f46e5', color: '#ffffff' }}
+                            >
+                                {isUploading ? <><Loader2 size={16} className="animate-spin" /> <span>Mengunggah ke Drive...</span></> : <><Save size={16} /> <span>Konfirmasi & Upload</span></>}
                             </button>
                         </div>
                     </div>
@@ -1479,7 +1680,7 @@ const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, pera
                     <GraduationCap size={20} className="text-orange-600" />
                     <h3 className="font-bold text-lg text-slate-800">Penilaian Sumatif Akhir Jenjang (PSAJ)</h3>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {menuPSAJ.map(f => (
                         <button key={f.id} onClick={() => handleOpenModal(f)} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-orange-300 flex flex-col items-center justify-center text-center h-40 group transition-all">
                             <div className={`p-3 rounded-full mb-3 group-hover:scale-110 transition-transform ${f.col}`}>
@@ -1490,6 +1691,75 @@ const PerangkatUjian = ({ schoolConfig, teacherDriveLinks, user, showToast, pera
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* RIWAYAT UNGGAHAN SAYA (KHUSUS GURU TERSEBUT) */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                        <Clock size={20} className="text-indigo-600" />
+                        <h3 className="font-bold text-lg text-slate-800">Riwayat Unggahan Saya</h3>
+                    </div>
+                    <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full border border-indigo-100">
+                        {myLogs.length} Berkas Diunggah
+                    </span>
+                </div>
+                
+                {myLogs.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-600">
+                            <thead className="bg-slate-50 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                                <tr>
+                                    <th className="py-3 px-4">No</th>
+                                    <th className="py-3 px-4">Jenis Perangkat Ujian</th>
+                                    <th className="py-3 px-4">Kelas</th>
+                                    <th className="py-3 px-4">Waktu Unggah</th>
+                                    <th className="py-3 px-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {myLogs.sort((a,b) => b.timestamp - a.timestamp).map((log, idx) => (
+                                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="py-3 px-4 font-bold">{idx + 1}</td>
+                                        <td className="py-3 px-4 font-bold text-slate-800">{log.type}</td>
+                                        <td className="py-3 px-4">
+                                            <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-semibold">
+                                                {log.targetClass || '-'}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-xs text-slate-500">
+                                            {new Date(log.timestamp).toLocaleString('id-ID')}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button 
+                                                    onClick={() => handlePreviewClick(log.link)} 
+                                                    className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
+                                                    title="Preview Berkas"
+                                                >
+                                                    <Eye size={14} /> Preview
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteMyLog(log.id, log.type)} 
+                                                    className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors border border-red-200 cursor-pointer" 
+                                                    title="Hapus Unggahan Ini"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-400">
+                        <Upload size={32} className="mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Anda belum mengunggah berkas perangkat ujian apapun.</p>
+                        <p className="text-xs text-slate-400 mt-1">Pilih salah satu menu di atas untuk mulai mengunggah kisi atau soal.</p>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1564,7 +1834,7 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
         return activeTeachers.map(teacherName => {
             const teacherSchedules = todaysSchedules.filter(s => s.teacherName === teacherName);
             const filledCount = teacherSchedules.reduce((acc, sch) => {
-                 const hasFilled = (jurnals || []).some(j => (j.scheduleId === sch.id || (j.subject === sch.subject && j.class === sch.class)) && j.date === todayLocale);
+                 const hasFilled = (jurnals || []).some(j => j.scheduleId === sch.id && j.date === todayLocale);
                  return acc + (hasFilled ? 1 : 0);
             }, 0);
             return {
@@ -1600,8 +1870,7 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
                     <div className="p-0 overflow-x-auto">
                         <table className="w-full text-left text-sm"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead><tbody className="divide-y divide-slate-100">
                             {(teachers || []).map(t => {
-                                const todayLocalISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                                const log = (teacherAttendance || []).find(a => a.teacherName === t.name && a.date === todayLocalISO);
+                                const log = (teacherAttendance || []).find(a => a.teacherName === t.name && a.date === today.toISOString().split('T')[0]);
                                 return (<tr key={t.id} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-4 font-bold text-slate-800">{t.name}</td><td className="px-6 py-4 text-slate-500">{log ? log.time : '-'}</td><td className="px-6 py-4 text-right">{log ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span> : <span className="text-slate-400 text-xs font-bold">Belum Absen</span>}</td></tr>);
                             })}
                         </tbody></table>
@@ -1625,10 +1894,8 @@ const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teac
 const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKelas, managedClass, isManagement }) => {
     const [selectedClass, setSelectedClass] = useState('');
     useEffect(() => {
-        if (!selectedClass) {
-            if (isWaliKelas && managedClass) setSelectedClass(managedClass);
-            else if ((isManagement || user?.role === 'admin') && (classes || []).length > 0) setSelectedClass((classes || [])[0]?.name);
-        }
+        if (isWaliKelas && managedClass) setSelectedClass(managedClass);
+        else if ((isManagement || user?.role === 'admin') && (classes || []).length > 0 && !selectedClass) setSelectedClass((classes || [])[0]?.name);
     }, [classes, isWaliKelas, managedClass, isManagement, user, selectedClass]);
 
     const analysisData = useMemo(() => {
@@ -1674,7 +1941,7 @@ const AnalisisSiswa = ({ classes, students, attendance, jurnals, user, isWaliKel
                     <div><h2 className="text-2xl font-bold text-slate-800">Analisis Siswa & Kelas</h2><p className="text-slate-500 text-sm">Insight otomatis berbasis data jurnal dan kehadiran</p></div>
                 </div>
                 <div className="relative min-w-[200px]">
-                    {isWaliKelas && user?.role !== 'admin' && !isManagement ? (
+                    {isWaliKelas ? (
                         <div className="bg-slate-100 px-4 py-3 rounded-xl font-bold text-slate-700 text-center border border-slate-200">Kelas {selectedClass}</div>
                     ) : (
                         <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold cursor-pointer outline-none">
@@ -2242,28 +2509,52 @@ const ManajemenData = ({ teachers, setTeachers, students, setStudents, classes, 
                             </div>
                             
                             <div className="pt-4 border-t border-slate-200 mt-6">
-                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Wand2 size={18}/> Pengaturan AI (Gemini API)</h4>
-                                <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
-                                    <input type="password" value={localSchoolConfig.geminiApiKey || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, geminiApiKey: e.target.value})} className="w-full p-2.5 border border-purple-300 rounded-lg focus:ring-purple-500 outline-none text-sm bg-white" placeholder="AIzaSy..." />
-                                    <p className="text-[10px] text-purple-600 mt-1">Dibutuhkan untuk fitur Generate Modul Ajar AI. Dapatkan di Google AI Studio secara gratis.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="pt-4 border-t border-slate-200 mt-6">
-                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Upload size={18}/> Integrasi Google Apps Script (GAS)</h4>
-                                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Link Web App URL (GAS)</label>
-                                    <input type="text" value={localSchoolConfig.gasUrl || ''} onChange={e=>setLocalSchoolConfig({...localSchoolConfig, gasUrl: e.target.value})} className="w-full p-2.5 border border-emerald-300 rounded-lg focus:ring-emerald-500 outline-none text-sm bg-white" placeholder="https://script.google.com/macros/s/..." />
-                                    <p className="text-[10px] text-emerald-600 mt-1">Isi dengan URL deployment GAS Anda agar file ujian langsung terupload otomatis ke Google Drive.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="pt-4 border-t border-slate-200 mt-6">
                                 <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText size={18}/> Pengaturan Dokumen Kebutuhan KBM Guru</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-100 p-4 rounded-xl border border-slate-200">
                                     <div><label className="block text-xs font-bold text-slate-700 mb-1">Link SK KBM</label><input type="text" value={localSchoolDocs.sk_kbm || ''} onChange={e=>setLocalSchoolDocs({...localSchoolDocs, sk_kbm: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none text-sm bg-white" placeholder="https://drive.google.com/file/d/.../view" /></div>
                                     <div><label className="block text-xs font-bold text-slate-700 mb-1">Link Kalender Pendidikan & RPE</label><input type="text" value={localSchoolDocs.kalender_rpe || ''} onChange={e=>setLocalSchoolDocs({...localSchoolDocs, kalender_rpe: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none text-sm bg-white" placeholder="https://drive.google.com/file/d/.../view" /></div>
+                                </div>
+                            </div>
+
+                            {/* INTEGRASI GOOGLE APPS SCRIPT (GAS) UPLOAD DRIVE */}
+                            <div className="pt-4 border-t border-slate-200 mt-6">
+                                <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 shadow-xs">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-bold text-emerald-800 text-sm flex items-center gap-2">
+                                            <Wifi size={18} className="text-emerald-600"/> Integrasi Google Apps Script (GAS) Google Drive
+                                        </h4>
+                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                            Aktif / Cloud Storage
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-emerald-700 mb-3 leading-relaxed">
+                                        File kisi, karso, dan soal yang diunggah guru otomatis terkirim langsung ke Google Drive sekolah dan terdata di menu Monitoring Ujian melalui URL Web App ini.
+                                    </p>
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="text-xs font-bold text-slate-700">Web App URL (Google Apps Script):</label>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setLocalSchoolConfig({...localSchoolConfig, gasUrl: 'https://script.google.com/macros/s/AKfycbw21YLVzDqet4uiQiFE0quqR6iJLGEdgrgVfEFGJ4GVU6R3mN9if1ZqGRdtfF6FinA/exec'})}
+                                                className="text-[11px] text-indigo-600 font-bold hover:underline"
+                                            >
+                                                Gunakan URL Default
+                                            </button>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={localSchoolConfig.gasUrl || ''} 
+                                            onChange={e => setLocalSchoolConfig({...localSchoolConfig, gasUrl: e.target.value})} 
+                                            placeholder="https://script.google.com/macros/s/.../exec" 
+                                            className="w-full p-3 border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-xs font-mono bg-white text-slate-800 shadow-inner" 
+                                        />
+                                        <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-slate-600">Default URL:</span>
+                                            <span className="font-mono text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[10.5px] truncate max-w-full">
+                                                https://script.google.com/macros/s/AKfycbw21YLVzDqet4uiQiFE0quqR6iJLGEdgrgVfEFGJ4GVU6R3mN9if1ZqGRdtfF6FinA/exec
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2514,7 +2805,7 @@ Instruksi Format Standar Sekolah:
                         <label className="block text-xs font-bold text-slate-700 mb-1">Soal dgn Gambar Internet Nyata</label>
                         <input type="number" min="0" value={form.denganGambar} onChange={e=>handleNumberChange('denganGambar', e.target.value)} className="w-full p-2.5 border rounded-lg text-sm font-bold" />
                     </div>
-                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white'}`}>
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md border ${loading ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-700 cursor-pointer shadow-indigo-100'}`} style={!loading ? { backgroundColor: '#4f46e5', color: '#ffffff' } : {}}>
                         {loading ? <><Loader2 size={18} className="animate-spin" /> Sedang Menyusun...</> : <><Bot size={18} /> Generate Soal</>}
                     </button>
                 </div>
@@ -2662,7 +2953,7 @@ Instruksi Format:
                         <textarea rows="3" value={form.materi} onChange={e=>setForm({...form, materi: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="Kata Kunci / Topik Pokok (Cth: Sistem Pernapasan Manusia)"></textarea>
                     </div>
                     
-                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-md transition-all ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg transform hover:-translate-y-0.5'}`}>
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-md transition-all border ${loading ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-700 cursor-pointer shadow-emerald-100 hover:shadow-lg transform hover:-translate-y-0.5'}`} style={!loading ? { backgroundColor: '#059669', color: '#ffffff' } : {}}>
                         {loading ? <><Loader2 size={18} className="animate-spin"/> Menyusun Materi...</> : <><Wand2 size={18}/> Generate Materi Komprehensif</>}
                     </button>
                     {!schoolConfig?.geminiApiKey && <p className="text-xs text-red-500 mt-3 text-center">Gemini API Key belum diatur!</p>}
@@ -2684,27 +2975,12 @@ Instruksi Format:
     );
 };
 
-const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToast }) => {
+const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToast, teachers = [] }) => {
     const [previewLink, setPreviewLink] = useState(null);
-    const logsByTeacher = (perangkatLogs || []).reduce((acc, log) => {
-        if (!acc[log.teacherName]) acc[log.teacherName] = [];
-        acc[log.teacherName].push(log);
-        return acc;
-    }, {});
-
-    const teacherNames = Object.keys(logsByTeacher).sort();
-
-    const handleDeleteLog = (logId, teacherName, logType) => {
-        showConfirm(`Hapus log unggahan ${logType} dari ${teacherName}?`, async () => {
-            try {
-                await setPerangkatLogs(prev => prev.filter(log => log.id !== logId));
-                showToast('Log berhasil dihapus!', 'success');
-            } catch (err) {
-                console.error(err);
-                showToast('Gagal menghapus log', 'error');
-            }
-        });
-    };
+    const [selectedCategory, setSelectedCategory] = useState('ALL'); // ALL, STS, SAS, SAT, PSAJ
+    const [selectedType, setSelectedType] = useState('ALL'); // ALL, KISI, SOAL
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusTab, setStatusTab] = useState('ALL'); // ALL, SUDAH, BELUM
 
     const handlePreviewClick = (link) => {
         let finalLink = link;
@@ -2718,6 +2994,54 @@ const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToa
         }
         setPreviewLink(finalLink);
     };
+
+    const handleDeleteLog = (logId, teacherName, logType) => {
+        showConfirm(`Hapus log unggahan ${logType} dari ${teacherName}?`, async () => {
+            try {
+                await setPerangkatLogs(prev => (prev || []).filter(log => log.id !== logId));
+                showToast('Log berhasil dihapus!', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal menghapus log', 'error');
+            }
+        });
+    };
+
+    // Filter logs based on category (STS, SAS, SAT, PSAJ) and type (KISI, SOAL)
+    const filteredLogs = (perangkatLogs || []).filter(log => {
+        if (selectedCategory !== 'ALL') {
+            const cat = log.category || (log.type && log.type.includes('STS') ? 'STS' : log.type && log.type.includes('SAS') ? 'SAS' : log.type && log.type.includes('SAT') ? 'SAT' : log.type && log.type.includes('PSAJ') ? 'PSAJ' : '');
+            if (cat !== selectedCategory) return false;
+        }
+        if (selectedType !== 'ALL') {
+            const prefix = log.prefix || (log.type && log.type.startsWith('KISI') ? 'KISI' : log.type && log.type.startsWith('SOAL') ? 'SOAL' : '');
+            if (prefix !== selectedType) return false;
+        }
+        return true;
+    });
+
+    const logsByTeacher = filteredLogs.reduce((acc, log) => {
+        if (!acc[log.teacherName]) acc[log.teacherName] = [];
+        acc[log.teacherName].push(log);
+        return acc;
+    }, {});
+
+    const masterTeacherNames = (teachers || []).map(t => t.name).filter(Boolean);
+    const allTeacherNames = Array.from(new Set([...masterTeacherNames, ...Object.keys(logsByTeacher)])).sort();
+
+    const teachersWithUploads = allTeacherNames.filter(name => (logsByTeacher[name] || []).length > 0);
+    const teachersWithoutUploads = allTeacherNames.filter(name => !(logsByTeacher[name] && logsByTeacher[name].length > 0));
+
+    const displayedTeachers = allTeacherNames.filter(name => {
+        if (searchQuery.trim() && !name.toLowerCase().includes(searchQuery.toLowerCase())) {
+            return false;
+        }
+        if (statusTab === 'SUDAH') return (logsByTeacher[name] || []).length > 0;
+        if (statusTab === 'BELUM') return !(logsByTeacher[name] && logsByTeacher[name].length > 0);
+        return true;
+    });
+
+    const categories = ['ALL', 'STS', 'SAS', 'SAT', 'PSAJ'];
 
     return (
         <div className="space-y-6 animate-fade-in relative">
@@ -2745,50 +3069,183 @@ const MonitoringUjian = ({ perangkatLogs, setPerangkatLogs, showConfirm, showToa
                 </div>
             )}
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Activity size={32} /></div>
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Monitoring Pengumpulan Ujian</h2>
-                    <p className="text-slate-500 text-sm">Pantau rekapitulasi pengumpulan berkas STS, SAS, SAT, dan PSAJ oleh masing-masing guru</p>
+            {/* HEADER */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Activity size={32} /></div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800">Monitoring Pengumpulan Ujian</h2>
+                        <p className="text-slate-500 text-sm">Pantau status pengumpulan kisi & soal STS, SAS, SAT, dan PSAJ oleh masing-masing guru</p>
+                    </div>
                 </div>
             </div>
 
-            {teacherNames.length > 0 ? (
+            {/* STATISTIK COUNTERS */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Guru</p>
+                    <p className="text-2xl font-black text-slate-800 mt-1">{allTeacherNames.length}</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm bg-gradient-to-br from-white to-emerald-50/40">
+                    <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Sudah Input</p>
+                    <p className="text-2xl font-black text-emerald-600 mt-1">{teachersWithUploads.length} Guru</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm bg-gradient-to-br from-white to-amber-50/40">
+                    <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Belum Input</p>
+                    <p className="text-2xl font-black text-amber-600 mt-1">{teachersWithoutUploads.length} Guru</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm bg-gradient-to-br from-white to-indigo-50/40">
+                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Berkas Terkumpul</p>
+                    <p className="text-2xl font-black text-indigo-600 mt-1">{filteredLogs.length}</p>
+                </div>
+            </div>
+
+            {/* FILTER BAR: CATEGORY TABS, TYPE, SEARCH */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    {/* CATEGORY TABS */}
+                    <div className="flex flex-wrap gap-2">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${selectedCategory === cat ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                {cat === 'ALL' ? 'Semua Ujian' : cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* STATUS FILTER TABS */}
+                    <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl">
+                        <button
+                            onClick={() => setStatusTab('ALL')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusTab === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                            Semua ({allTeacherNames.length})
+                        </button>
+                        <button
+                            onClick={() => setStatusTab('SUDAH')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusTab === 'SUDAH' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                        >
+                            Sudah Input ({teachersWithUploads.length})
+                        </button>
+                        <button
+                            onClick={() => setStatusTab('BELUM')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusTab === 'BELUM' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'}`}
+                        >
+                            Belum Input ({teachersWithoutUploads.length})
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                    {/* SEARCH TEACHER */}
+                    <div className="relative">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Cari nama guru..."
+                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                        />
+                    </div>
+
+                    {/* FILTER TYPE (KISI VS SOAL) */}
+                    <div>
+                        <select
+                            value={selectedType}
+                            onChange={e => setSelectedType(e.target.value)}
+                            className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                        >
+                            <option value="ALL">Semua Jenis (Kisi & Soal)</option>
+                            <option value="KISI">Hanya Kisi & Pedoman</option>
+                            <option value="SOAL">Hanya Soal / Praktik</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center text-xs text-slate-500">
+                        <span>Menampilkan: <strong>{displayedTeachers.length}</strong> dari {allTeacherNames.length} guru</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* LIST DAFTAR MONITORING GURU */}
+            {displayedTeachers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {teacherNames.map(name => (
-                        <div key={name} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                            <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
-                                <h3 className="font-bold text-slate-800 flex items-center gap-2"><UserCheck size={18} className="text-indigo-600"/> {name}</h3>
-                                <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-md text-xs font-bold">{logsByTeacher[name].length} Berkas</span>
+                    {displayedTeachers.map(name => {
+                        const logs = logsByTeacher[name] || [];
+                        const hasUploaded = logs.length > 0;
+
+                        return (
+                            <div key={name} className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all ${hasUploaded ? 'border-slate-200' : 'border-amber-200/80 bg-amber-50/20'}`}>
+                                <div className={`p-4 border-b flex justify-between items-center shrink-0 ${hasUploaded ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/50 border-amber-100'}`}>
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                                        <UserCheck size={18} className={hasUploaded ? "text-indigo-600" : "text-amber-500"}/> {name}
+                                    </h3>
+                                    {hasUploaded ? (
+                                        <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1">
+                                            <CheckCircle size={12} /> {logs.length} Berkas
+                                        </span>
+                                    ) : (
+                                        <span className="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1">
+                                            <AlertCircle size={12} /> Belum Input
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="p-0 overflow-y-auto max-h-[300px]">
+                                    {hasUploaded ? (
+                                        <ul className="divide-y divide-slate-100">
+                                            {logs.sort((a,b) => b.timestamp - a.timestamp).map(log => (
+                                                <li key={log.id} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center gap-4 group">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                            <span className="text-xs font-bold text-slate-800 uppercase leading-tight">{log.type}</span>
+                                                            {log.targetClass && (
+                                                                <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded">
+                                                                    {log.targetClass}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 font-medium">{new Date(log.timestamp).toLocaleString('id-ID')}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button 
+                                                            onClick={() => handlePreviewClick(log.link)} 
+                                                            className="shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border border-blue-100 cursor-pointer"
+                                                        >
+                                                            <Eye size={14} /> Preview
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteLog(log.id, name, log.type)} 
+                                                            className="shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors border border-red-100 opacity-60 hover:opacity-100 cursor-pointer" 
+                                                            title="Hapus Log"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="p-6 text-center text-slate-400 text-xs flex flex-col items-center">
+                                            <AlertCircle size={24} className="text-amber-400 mb-2 opacity-60" />
+                                            <p className="font-semibold text-slate-600">Belum ada berkas untuk kategori {selectedCategory === 'ALL' ? 'ini' : selectedCategory}</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">Guru belum mengonfirmasi unggahan di menu Perangkat Ujian.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="p-0 overflow-y-auto max-h-[300px]">
-                                <ul className="divide-y divide-slate-100">
-                                    {logsByTeacher[name].sort((a,b) => b.timestamp - a.timestamp).map(log => (
-                                        <li key={log.id} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center gap-4 group">
-                                            <div className="flex-1">
-                                                <p className="text-xs font-bold text-slate-700 uppercase mb-1 leading-tight">{log.type}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">{new Date(log.timestamp).toLocaleString('id-ID')}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handlePreviewClick(log.link)} className="shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border border-blue-100 cursor-pointer">
-                                                    <Eye size={14} /> Preview
-                                                </button>
-                                                <button onClick={() => handleDeleteLog(log.id, name, log.type)} className="shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors border border-red-100 opacity-50 hover:opacity-100" title="Hapus Log">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="bg-white p-12 text-center rounded-2xl border border-slate-100 text-slate-400 shadow-sm flex flex-col items-center">
                     <FileBadge size={48} className="mb-4 opacity-30" />
-                    <p className="font-medium text-lg">Belum ada dokumen ujian</p>
-                    <p className="text-sm mt-1">Berkas yang diunggah guru di menu Perangkat Ujian akan otomatis tampil di sini.</p>
+                    <p className="font-medium text-lg">Tidak ada data guru yang cocok</p>
+                    <p className="text-sm mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
                 </div>
             )}
         </div>
@@ -2801,48 +3258,52 @@ const GenerateRPP = ({ schoolConfig, user, showToast, teachers }) => {
     const [generatedHtml, setGeneratedHtml] = useState('');
     const printRef = useRef(null);
 
-    useEffect(() => {
-        if (window.MathJax && generatedHtml) {
-            setTimeout(() => {
-                window.MathJax.typesetClear();
-                window.MathJax.typesetPromise().catch((err) => console.log(err));
-            }, 100);
-        }
-    }, [generatedHtml]);
-
     const handleGenerate = async () => {
         if (!schoolConfig?.geminiApiKey) {
-            showToast('Gemini API Key belum diatur! Silakan atur di menu Profil Sekolah.', 'error');
+            showToast('Gemini API Key belum diatur! Hubungi Admin.', 'error');
             return;
         }
+
         if (!form.kelas || !form.mapel || !form.materi) {
-            showToast('Harap lengkapi Kelas, Mapel, dan Materi!', 'error');
+            showToast('Harap lengkapi Kelas, Mata Pelajaran, dan Materi!', 'error');
             return;
         }
 
         setLoading(true);
         setGeneratedHtml('');
-        
+
         try {
-            const prompt = `Buatlah Modul Ajar (RPP) Kurikulum Merdeka yang sangat lengkap dan akurat berdasarkan standar terbaru untuk:
-- Tingkat/Kelas: ${form.kelas}
+            const prompt = `Bertindaklah sebagai Ahli Kurikulum Merdeka 2026. Buatlah Rencana Pelaksanaan Pembelajaran (RPP) / Modul Ajar yang SANGAT DETAIL, LENGKAP, dan SIAP CETAK dengan identitas:
+- Jenjang/Kelas: ${form.kelas}
 - Mata Pelajaran: ${form.mapel}
-- Materi/Tema: ${form.materi}
+- Materi Pokok / Topik: ${form.materi}
 - Alokasi Waktu: ${form.alokasiWaktu}
+- Nama Sekolah: ${schoolConfig?.name || 'SMA Negeri 1 Edukasi'}
+- Nama Guru: ${user.name}
 
-Instruksi Format:
-1. Berikan respons *HANYA* dalam format sintaks HTML murni (tanpa tag <html>, <head>, atau <body>, cukup langsung mulai dengan <div>, <h1>, dll). JANGAN bungkus dengan backtick markdown (\`\`\`html).
-2. Format HTML harus sangat rapi dan siap dirender. Gunakan tabel HTML (<table>, <tr>, <th>, <td>) dengan style CSS inline (misal: style="border-collapse: collapse; width: 100%; border: 1px solid black;") untuk bagian-bagian yang membutuhkan tabel (seperti rubrik penilaian atau LKPD).
-3. PENTING UNTUK MATEMATIKA: WAJIB gunakan format LaTeX murni untuk SEMUA simbol matematika, rumus, pecahan, akar, pangkat, dan bilangan (contoh: \\( \\frac{1}{2} \\) untuk pecahan, \\( \\sqrt{2} \\) untuk akar, \\( x^2 \\) untuk pangkat). Gunakan \\( ... \\) untuk rumus dalam baris (inline) dan \\[ ... \\] untuk rumus blok (display). Sistem aplikasi sudah dilengkapi 'Equation Model' (MathJax) yang secara otomatis merender LaTeX menjadi format nyata seperti Microsoft Equation!
-
-Struktur Wajib Modul Ajar (Kurikulum Merdeka):
-1. **Informasi Umum**: Identitas, Kompetensi Awal, Profil Pelajar Pancasila, Sarana & Prasarana, Target Peserta Didik, Model Pembelajaran.
-2. **Komponen Inti**: Tujuan Pembelajaran, Pemahaman Bermakna, Pertanyaan Pemantik, Kegiatan Pembelajaran (Pendahuluan, Inti, Penutup yang dijabarkan per tahapan dengan alokasi waktu). Sesuaikan materi ajar dengan literatur standar.
-3. **Asesmen**: Formatif & Sumatif. HARUS sertakan **Rubrik Penilaian** dalam bentuk tabel HTML yang jelas.
-4. **Lampiran**: **Lembar Kerja Peserta Didik (LKPD)** dengan format dan bentuk sesuai LKPD standar, menggunakan tabel atau kolom isian kosong (misalnya garis bawah).
-5. **Bahan Bacaan & Glosarium**: Bahan bacaan guru dan siswa, glosarium, daftar pustaka.
-6. **Gambar Ilustrasi 3D**: Sisipkan gambar ilustrasi pendukung bergaya 3D. Gunakan tag <img> berikut dan *Wajib* ganti teks \`[deskripsi_inggris]\` dengan terjemahan spesifik bahasa inggris dari materi (gunakan format URL encoding, misal spasi diganti %20):
-<img src="https://image.pollinations.ai/prompt/3d%20illustration%20of%20[deskripsi_inggris]%20realistic%20educational%20style%20high%20quality?width=800&height=400&nologo=true" alt="Ilustrasi Materi" style="width:100%; max-width:800px; height:auto; margin:20px 0; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);"/>`;
+Instruksi Format Output:
+1. Output HARUS dalam format HTML MURNI (Gunakan tag seperti <div>, <h2>, <h3>, <p>, <table>, <tr>, <td>, <ul>, <li>). JANGAN sertakan markdown backticks seperti \`\`\`html.
+2. Gunakan tabel HTML dengan border hitam 1px untuk bagian-bagian yang terstruktur.
+3. RPP HARUS memuat komponen Kurikulum Merdeka secara lengkap:
+   A. IDENTITAS MODUL
+   B. KOMPETENSI AWAL
+   C. PROFIL PELAJAR PANCASILA (Pilih dimensi yang relevan)
+   D. SARANA DAN PRASARANA
+   E. TARGET PESERTA DIDIK
+   F. MODEL PEMBELAJARAN
+   G. KOMPONEN INTI:
+      - Tujuan Pembelajaran (Capaian yang dituju)
+      - Pemahaman Bermakna
+      - Pertanyaan Pemantik
+      - Kegiatan Pembelajaran (Pendahuluan, Inti dengan sintaks model terpilih, Penutup) dengan estimasi menit.
+      - Asesmen (Diagnostik, Formatif, Sumatif)
+      - Pengayaan dan Remedial
+   H. LAMPIRAN:
+      - Lembar Kerja Peserta Didik (LKPD) ringkas
+      - Bahan Bacaan Guru dan Peserta Didik
+      - Rubrik Penilaian detail
+4. JANGAN potong respons. Buat selengkap-lengkapnya.
+5. Gunakan font styling standar formal sekolah (Times New Roman / Arial) tanpa CSS external yang aneh.`;
 
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${schoolConfig.geminiApiKey.trim()}`, {
                 method: 'POST',
@@ -2968,7 +3429,7 @@ Struktur Wajib Modul Ajar (Kurikulum Merdeka):
                         <input type="text" value={form.alokasiWaktu} onChange={e=>setForm({...form, alokasiWaktu: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-purple-500 text-sm" placeholder="Contoh: 2 x 45 Menit" />
                     </div>
                     
-                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md ${loading ? 'bg-slate-200 text-slate-500' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:shadow-lg hover:from-purple-700 hover:to-indigo-700'}`}>
+                    <button onClick={handleGenerate} disabled={loading} className={`w-full py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-md border ${loading ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 cursor-pointer shadow-purple-100 hover:shadow-lg hover:from-purple-700 hover:to-indigo-700'}`} style={!loading ? { backgroundColor: '#9333ea', color: '#ffffff' } : {}}>
                         {loading ? <><Loader2 size={18} className="animate-spin" /> Sedang Menulis...</> : <><Bot size={18} /> Generate Modul Ajar</>}
                     </button>
                     {!schoolConfig?.geminiApiKey && (
@@ -3125,12 +3586,12 @@ export default function App() {
         }
     }
 
-    const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name) : null; 
-    const isPiket = currentTeacher?.status?.includes('Guru Piket');
+    const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name || (user?.teacherId && t.id === user.teacherId)) : null; 
+    const isPiket = currentTeacher?.status && /piket/i.test(currentTeacher.status);
     const managedClass = (classes || []).find(c => c.wali === user?.name)?.name || null;
-    const isWaliKelas = !!managedClass || currentTeacher?.status?.includes('Wali Kelas');
-    const isManagement = user?.role === 'admin' || user?.role === 'kepala_sekolah' || currentTeacher?.status?.includes('Kepala Sekolah') || currentTeacher?.status?.includes('Wakil Kepala Sekolah');
-    const isPanitiaUjian = user?.role === 'admin' || (user?.role === 'guru' && currentTeacher?.status && /panitia (sts|sas|sat|psaj)/i.test(currentTeacher.status));
+    const isWaliKelas = !!managedClass || (currentTeacher?.status && /wali/i.test(currentTeacher.status));
+    const isManagement = user?.role === 'admin' || user?.role === 'kepala_sekolah' || (currentTeacher?.status && /kepala sekolah/i.test(currentTeacher.status));
+    const isPanitiaUjian = user?.role === 'admin' || (user?.role === 'guru' && currentTeacher?.status && (/panitia/i.test(currentTeacher.status) || /ujian/i.test(currentTeacher.status) || /(sts|sas|sat|psaj)/i.test(currentTeacher.status)));
 
     return (
         <div className="flex h-[100dvh] bg-slate-50 overflow-hidden font-sans selection:bg-indigo-100 selection:text-indigo-700">
@@ -3160,7 +3621,7 @@ export default function App() {
                     {activeTab === 'absensi-guru' && <AbsensiGuru user={user} teacherAttendance={teacherAttendance || []} setTeacherAttendance={setTeacherAttendance} classLogs={classLogs || []} setClassLogs={setClassLogs} schedules={schedules || []} showToast={showToast} />}
                     {activeTab === 'jurnal' && <JurnalMengajar user={user} schedules={schedules || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} setJurnals={setJurnals} showToast={showToast} schoolConfig={schoolConfig || {}} teachers={teachers || []} />}
                     {activeTab === 'drive-guru' && <DriveAdministrasiGuru teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} user={user} showToast={showToast} />}
-                    {activeTab === 'perangkat-ujian' && <PerangkatUjian schoolConfig={schoolConfig || {}} teacherDriveLinks={teacherDriveLinks || {}} user={user} showToast={showToast} perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} />}
+                    {activeTab === 'perangkat-ujian' && <PerangkatUjian schoolConfig={schoolConfig || {}} teacherDriveLinks={teacherDriveLinks || {}} user={user} showToast={showToast} perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} classes={classes || []} showConfirm={showConfirm} teachers={teachers || []} subjects={subjects || []} />}
                     {activeTab === 'kebutuhan-kbm' && <KebutuhanKBMGuru schoolDocs={schoolDocs || {}} isPiket={isPiket} />}
                     {activeTab === 'presensi' && <PresensiSiswa students={students || []} attendance={attendance || {}} setAttendance={setAttendance} showToast={showToast} user={user} schedules={schedules || []} classes={classes || []} />}
                     {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
@@ -3168,7 +3629,7 @@ export default function App() {
                     {activeTab === 'soal-ai' && <GenerateSoal schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'materi-ai' && <GenerateMateri schoolConfig={schoolConfig || {}} user={user} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'monitoring' && <MonitoringGuru teacherAttendance={teacherAttendance || []} classLogs={classLogs || []} schedules={schedules || []} jurnals={jurnals || []} teachers={teachers || []} />}
-                    {activeTab === 'monitoring-ujian' && <MonitoringUjian perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} showConfirm={showConfirm} showToast={showToast} />}
+                    {activeTab === 'monitoring-ujian' && <MonitoringUjian perangkatLogs={perangkatLogs || []} setPerangkatLogs={setPerangkatLogs} showConfirm={showConfirm} showToast={showToast} teachers={teachers || []} />}
                     {activeTab === 'analisis-siswa' && <AnalisisSiswa classes={classes || []} students={students || []} attendance={attendance || {}} jurnals={jurnals || []} schedules={schedules || []} user={user} isWaliKelas={isWaliKelas} managedClass={managedClass} isManagement={isManagement} />}
                     {activeTab === 'data' && <ManajemenData teachers={teachers || []} setTeachers={setTeachers} students={students || []} setStudents={setStudents} classes={classes || []} setClasses={setClasses} subjects={subjects || []} setSubjects={setSubjects} schedules={schedules || []} setSchedules={setSchedules} showConfirm={showConfirm} showToast={showToast} teacherDriveLinks={teacherDriveLinks || {}} setTeacherDriveLinks={setTeacherDriveLinks} schoolConfig={schoolConfig || {}} setSchoolConfig={setSchoolConfig} schoolDocs={schoolDocs || {}} setSchoolDocs={setSchoolDocs} jurnals={jurnals || []} setJurnals={setJurnals} teacherAttendance={teacherAttendance || []} setTeacherAttendance={setTeacherAttendance} classLogs={classLogs || []} setClassLogs={setClassLogs} accounts={accounts || []} setAccounts={setAccounts} attendance={attendance || {}} setAttendance={setAttendance} calendarEvents={calendarEvents || []} setCalendarEvents={setCalendarEvents} />}
                     {activeTab === 'generate-akun' && <GenerateAkun teachers={teachers || []} accounts={accounts || []} setAccounts={setAccounts} showToast={showToast} />}
